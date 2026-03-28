@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hospital PRONTIL - Emergência Pediátrica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+        }
+
+        .card-shadow { box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05); }
+        
+        @keyframes alert-pulse {
+            0%, 100% { background-color: #fee2e2; border-color: #ef4444; color: #b91c1c; }
+            50% { background-color: #dc2626; border-color: #991b1b; color: #ffffff; }
+        }
+        .timer-ready { animation: alert-pulse 1.5s infinite; }
+
+        @keyframes banner-pulse {
+            0% { transform: scale(1); box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4); }
+            50% { transform: scale(1.02); box-shadow: 0 4px 25px rgba(220, 38, 38, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4); }
+        }
+        .banner-alert { animation: banner-pulse 2s infinite ease-in-out; }
+
+        @keyframes metro-pulse {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 1; background-color: #ef4444; }
+            100% { transform: scale(1); opacity: 0.3; }
+        }
+        .metro-active { animation: metro-pulse 0.45s ease-out; }
+
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .tab-btn {
+            display: inline-block;
+            flex-shrink: 0;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #e2e8f0;
+            white-space: nowrap;
+            background-color: #ffffff;
+            color: #64748b;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+
+        .tab-btn.active {
+            background-color: #2563eb !important;
+            border-color: #1d4ed8 !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            transform: translateY(-1px);
+        }
+
+        #content { transition: opacity 0.2s ease-in-out; }
+
+        .watermark {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            width: 160px;
+            opacity: 0.08;
+            z-index: 10;
+            pointer-events: none;
+            filter: grayscale(100%);
+        }
+
+        .logo-header {
+            height: 38px;
+            width: 38px;
+            object-fit: contain;
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #history-modal, #history-modal * { visibility: visible; }
+            #history-modal { position: absolute; left: 0; top: 0; width: 100%; background: white; display: block !important; z-index: 9999; }
+            #history-modal > div { box-shadow: none !important; border: none !important; max-width: 100% !important; max-height: none !important; width: 100% !important; }
+            .no-print { display: none !important; }
+            #history-list { overflow: visible !important; max-height: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+
+        .btn-pcr-disabled {
+            background-color: #f1f5f9 !important;
+            border-color: #e2e8f0 !important;
+            color: #94a3b8 !important;
+            opacity: 0.5;
+            filter: grayscale(1);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col relative pb-24">
+
+    <!-- Modal de Confirmação de Reset -->
+    <div id="reset-confirm-modal" class="fixed inset-0 z-[150] bg-slate-900/90 backdrop-blur-sm hidden flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl text-center border-4 border-red-100">
+            <div class="text-5xl mb-4">🗑️</div>
+            <h2 class="text-xl font-black text-slate-900 uppercase mb-2 leading-tight">Limpar Tudo?</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">Isso apagará permanentemente o histórico e os timers deste atendimento.</p>
+            
+            <div class="space-y-3">
+                <button onclick="executeReset()" class="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Sim, Limpar Dados</button>
+                <button onclick="closeResetModal()" class="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase active:scale-95 transition-all">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Checagem de Pulso -->
+    <div id="pulse-check-modal" class="fixed inset-0 z-[130] bg-slate-900/95 backdrop-blur-md hidden flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl text-center border-4 border-blue-500">
+            <div class="text-5xl mb-4">🖐️</div>
+            <h2 class="text-xl font-black text-slate-900 uppercase mb-2">Checar Pulso</h2>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">Verifique por no máximo 10 segundos:</p>
+            
+            <div class="space-y-4">
+                <button onclick="processPulseCheck(true)" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
+                    <span>Sim, tem Pulso</span>
+                    <span class="text-[9px] opacity-70 mt-1">Rosc / Estabilização</span>
+                </button>
+                <button onclick="processPulseCheck(false)" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
+                    <span>Não tem Pulso</span>
+                    <span class="text-[9px] opacity-70 mt-1">Retomar RCP (AESP/Ass.)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup de Seleção de Ritmo Inicial/Ciclo -->
+    <div id="pcr-rhythm-selection-modal" class="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl text-center border-4 border-slate-100">
+            <div class="text-5xl mb-4">⚡</div>
+            <h2 id="rhythm-modal-title" class="text-xl font-black text-slate-900 uppercase mb-2">Iniciar RCP</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">Selecione o ritmo identificado:</p>
+            
+            <div class="space-y-4">
+                <button onclick="confirmPcrStart('shockable')" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
+                    <span>Ritmo Chocável</span>
+                    <span class="text-[9px] opacity-70 mt-1">FV / TV Sem Pulso</span>
+                </button>
+                <button id="pcr-rhythm-btn-nonshock" onclick="confirmPcrStart('non-shockable')" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
+                    <span id="pcr-rhythm-btn-label">AESP / Assistolia</span>
+                    <span id="pcr-rhythm-btn-sublabel" class="text-[9px] opacity-70 mt-1">Ritmo Não Chocável</span>
+                </button>
+            </div>
+            
+            <button onclick="closeRhythmSelection()" class="mt-6 text-[10px] font-black text-slate-400 uppercase underline decoration-2 underline-offset-4">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Popup de Checagem de Ritmo -->
+    <div id="pcr-cycle-alert-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] w-[90%] max-w-sm hidden">
+        <div class="bg-white rounded-[2.5rem] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-4 border-red-500 text-center animate-in zoom-in duration-300">
+            <div class="text-5xl mb-4">🚨</div>
+            <h2 class="text-2xl font-black text-red-600 uppercase mb-1 leading-none">Checar Ritmo</h2>
+            <p class="text-[14px] font-black text-red-700 uppercase tracking-widest mb-2">⚠️ SUSPENDER RCP AGORA - Revezar socorristas</p>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 italic">Aguarde a checagem ou escolha o ritmo abaixo</p>
+            
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[9px] font-black text-slate-500 uppercase">Janela de Checagem</span>
+                    <span id="checking-countdown" class="text-[9px] font-black text-red-600 tabular-nums">10s</span>
+                </div>
+                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-50">
+                    <div id="checking-progress-bar" class="h-full bg-red-500 transition-all duration-100 linear" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <button onclick="startNextPcrCycle()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all text-sm">
+                Escolher Ritmo / Retomar
+            </button>
+        </div>
+    </div>
+
+    <!-- Alerta Inicial de Referência -->
+    <div id="initial-disclaimer" class="fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-white rounded-[2.5rem] p-8 max-md w-full shadow-2xl text-center border border-white/20">
+            <div class="text-4xl mb-4">⚠️</div>
+            <h2 class="text-xl font-black text-slate-900 uppercase mb-4 tracking-tighter">Aviso Importante</h2>
+            <p class="text-sm text-slate-600 font-medium mb-8 leading-relaxed">
+                Este é um <strong>guia de referência</strong> para cenários de emergência. As doses e parâmetros devem ser <strong>sempre conferidos</strong> por um profissional habilitado antes da administração.
+            </p>
+            <button onclick="closeDisclaimer()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">
+                Entendo e Concordo
+            </button>
+        </div>
+    </div>
+
+    <!-- Janela Flutuante de Histórico -->
+    <div id="history-modal" class="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h2 class="text-lg font-black text-slate-900 uppercase leading-none">Resumo Geral</h2>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Hospital PRONTIL - Emergência Pediátrica</p>
+                </div>
+                <button onclick="closeHistory()" class="no-print w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-md text-slate-400 hover:text-red-500 transition-colors">
+                    <span class="text-2xl font-light">✕</span>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-4 bg-white no-scrollbar">
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div class="flex flex-col">
+                        <label class="text-[8px] font-black text-slate-400 uppercase mb-1">Nome da Criança</label>
+                        <input type="text" id="patientNameInput" placeholder="NOME COMPLETO" class="bg-transparent text-xs font-black text-slate-800 focus:outline-none uppercase border-b border-slate-200" oninput="savePatientInfo()">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[8px] font-black text-slate-400 uppercase mb-1">Data de Nascimento</label>
+                        <input type="date" id="patientDobInput" class="bg-transparent text-xs font-black text-slate-800 focus:outline-none border-b border-slate-200" oninput="savePatientInfo()">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[8px] font-black text-slate-400 uppercase mb-1">Peso Referência</label>
+                        <p id="printWeightDisplay" class="text-xs font-black text-slate-800">-- kg</p>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[8px] font-black text-slate-400 uppercase mb-1">Data do Atendimento</label>
+                        <p id="printDateDisplay" class="text-xs font-black text-slate-800">--/--/----</p>
+                    </div>
+                </div>
+
+                <div id="history-list" class="space-y-2"></div>
+            </div>
+
+            <div class="no-print p-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
+                <div class="flex gap-3">
+                    <button onclick="window.print()" class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">
+                        🖨️ Gerar PDF / Imprimir
+                    </button>
+                    <button onclick="openResetModal()" class="flex-1 bg-red-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">
+                        🗑️ Limpar Tudo
+                    </button>
+                </div>
+                <p class="text-[9px] font-bold text-slate-400 uppercase italic text-center">Dados salvos localmente no navegador.</p>
+            </div>
+        </div>
+    </div>
+
+    <img src="Prontil-Logo-768x768.png" class="watermark" alt="Marca d'água Prontil" onerror="this.style.display='none'">
+
+    <div id="global-alert-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[60] w-[92%] max-w-lg pointer-events-none transition-all duration-300 opacity-0 scale-95 invisible">
+        <div class="pointer-events-auto bg-red-600 text-white p-4 rounded-[2rem] shadow-2xl banner-alert border-2 border-white/20">
+            <div class="flex items-start gap-3 mb-3">
+                <span class="text-2xl">⏰</span>
+                <div class="flex-1">
+                    <p class="text-[10px] font-black uppercase opacity-70 leading-tight mb-1">Aviso de Horário</p>
+                    <p id="alert-message" class="text-[13px] font-bold leading-tight">A medicação terminou e pode ser administrada novamente.</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="alert-go-btn" class="flex-1 bg-white text-red-700 py-3 rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95">Ver Card</button>
+                <button id="alert-dismiss-btn" class="flex-1 bg-red-800/50 text-white py-3 rounded-2xl text-[10px] font-black uppercase border border-white/10 active:scale-95">Dispensar</button>
+            </div>
+        </div>
+    </div>
+
+    <header id="app-header" class="bg-blue-800 text-white shadow-xl sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden p-1">
+                    <img src="Prontil-Logo-768x768.png" alt="Logo" class="logo-header">
+                </div>
+                <div>
+                    <h1 class="text-base font-black tracking-tighter uppercase leading-none">Hospital PRONTIL</h1>
+                    <p class="text-[9px] uppercase tracking-[0.2em] opacity-80 font-bold italic">Cenários de Emergência Pediátrica</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-900/50 p-1.5 rounded-2xl border border-blue-400/20 flex items-center gap-2">
+                    <button onclick="updateAge(-1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">-</button>
+                    <div class="flex flex-col items-center px-1">
+                        <span class="text-[8px] uppercase font-bold opacity-60 leading-none mb-1">Anos</span>
+                        <input type="number" id="ageInput" value="3" class="w-8 text-center bg-transparent text-sm font-black focus:outline-none" oninput="handleAgeInput()">
+                    </div>
+                    <button onclick="updateAge(1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">+</button>
+                </div>
+                <div class="bg-blue-600 p-1.5 rounded-2xl shadow-lg flex items-center gap-2 ring-2 ring-white/20">
+                    <button onclick="updateWeight(-1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">-</button>
+                    <div class="flex flex-col items-center px-1">
+                        <span class="text-[8px] uppercase font-bold opacity-80 leading-none mb-1">Peso kg</span>
+                        <input type="number" id="weightInput" value="14" class="w-10 text-center bg-transparent text-lg font-black focus:outline-none" oninput="handleWeightInput()">
+                    </div>
+                    <button onclick="updateWeight(1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">+</button>
+                </div>
+                <button onclick="openHistory()" class="w-11 h-11 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg border border-white/20 active:scale-90 transition-transform">
+                    <span class="text-xl">📋</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-container" class="max-w-4xl mx-auto p-4 space-y-4 flex-grow w-full">
+
+        <section class="bg-white p-3 rounded-[2rem] card-shadow border border-slate-100 grid grid-cols-3 gap-2">
+            <div class="col-span-3 pb-1 border-b border-slate-50 flex justify-between items-center">
+                <span id="vitalLabel" class="text-[10px] font-black text-blue-600 uppercase tracking-widest">---</span>
+                <span class="text-[10px] font-bold text-slate-300 italic text-right">REF: PALS/SBP</span>
+            </div>
+            <div class="text-center">
+                <p class="text-[8px] uppercase text-slate-400 font-bold">FC (bpm)</p>
+                <p id="vitalFC" class="text-xs font-black text-slate-700">--</p>
+            </div>
+            <div class="text-center border-x border-slate-100">
+                <p class="text-[8px] uppercase text-slate-400 font-bold">FR (ipm)</p>
+                <p id="vitalFR" class="text-xs font-black text-slate-700">--</p>
+            </div>
+            <div class="text-center">
+                <p class="text-[8px] uppercase text-slate-400 font-bold">PAS Mín.</p>
+                <p id="vitalPAS" class="text-xs font-black text-slate-700">--</p>
+            </div>
+        </section>
+
+        <section id="activity-monitor" class="hidden space-y-2">
+            <h4 class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Monitor de Ciclos e Medicações</h4>
+            <div id="active-meds-list" class="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2"></div>
+        </section>
+
+        <div class="sticky z-40 bg-slate-50 pb-2 -mx-4 px-4 shadow-sm sm:shadow-none" style="top: var(--header-height, 75px);">
+            <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 items-center" id="tabs-container"></div>
+        </div>
+
+        <div id="content" class="space-y-4 pb-12"></div>
+
+    </main>
+
+    <footer class="bg-slate-100 text-slate-400 py-6 px-4 text-center border-t border-slate-200 mt-auto">
+        <p class="text-[10px] font-black uppercase tracking-tight mb-1">2026 - Hospital Prontil</p>
+        <p class="text-[9px] font-bold uppercase tracking-tighter opacity-70 italic">Apenas para referência. Conferir doses antes da aplicação.</p>
+    </footer>
+
+    <script>
+        const tabsOrder = [
+            { id: 'equipamentos', label: 'Equipamentos' },
+            { id: 'ventilacao', label: 'Ventilação' },
+            { id: 'pcr', label: 'PCR' },
+            { id: 'choque', label: 'Choque' },
+            { id: 'sedacao', label: 'Sedação/SRI' },
+            { id: 'asma', label: 'Asma' },
+            { id: 'convulsao', label: 'Convulsão' },
+            { id: 'anafilaxia', label: 'Anafilaxia' },
+            { id: 'tsv', label: 'TSV' },
+            { id: 'tce', label: 'TCE/HIC' },
+            { id: 'hipertensao', label: 'Hipertensão' },
+            { id: 'antidotos', label: 'Antídotos' },
+            { id: 'todos', label: 'Lista Geral' }
+        ];
+
+        let timers = {}; 
+        let currentTab = 'equipamentos';
+        let pcrHistory = [];
+        let pcrShockTimerStart = null;
+        let pcrCycleAlertTriggered = false; 
+        let pcrCycleCount = 1; 
+        let pcrCheckingRhythm = false; 
+        let pcrRhythmType = null;
+        let pcrShockAppliedInCycle = false; 
+        let checkingStartTime = null; 
+        let tsvHistory = { shock1: { sedated: false, synced: false, history: [] }, shock2: { sedated: false, synced: false, history: [] } };
+        let patientInfo = { name: '', dob: '' };
+        
+        let metronomeActive = false;
+        let metronomeSoundEnabled = true; 
+        let metronomeInterval = null;
+        let audioCtx = null; 
+
+        let tabStartX = 0;
+        let tabStartY = 0;
+
+        const STORAGE_KEY = 'prontil_ped_v1_state';
+
+        const medData = [
+            { id: 8, name: "Cristalóide (Expansão)", indication: "Choque hipovolêmico / Distributivo / Anafilático", pres: "SF 0,9% ou Ringer Lactato", usage: "20 ml/kg (bolus rápido)", route: "EV / IO", doseML: (w) => (20 * w).toFixed(0), unitML: "ml", repeat: 20, maxDoses: 3, tabs: ["choque", "anafilaxia", "todos"], obs: "Repetir até 40-60 ml/kg na 1ª hora. Avaliar sinais de sobrecarga (crepitações, hepatomegalia)." },
+            { id: 1, name: "Adrenalina (PCR)", indication: "Parada Cardiorrespiratória (todos os ritmos)", pres: "1:10.000 (0,1 mg/ml)", usage: "0,01 mg/kg (máx 1 mg/dose)", route: "EV / IO", doseML: (w) => Math.min(0.1 * w, 10).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(0.01 * w, 1.0).toFixed(2), unitMass: "mg", obs: "Repetir a cada 3-5 minutos durante toda a RCP. Primeira dose o mais precocemente possível.", repeat: 3, tabs: ["pcr", "todos"] },
+            { id: 2, name: "Adrenalina IM (Anafilaxia)", indication: "Anafilaxia / Choque anafilático", pres: "1 mg/ml (pura)", usage: "0,01 mg/kg (máx 0,5 mg)", route: "IM (face anterolateral da coxa)", doseML: (w) => Math.min(0.01 * w, 0.5).toFixed(2), unitML: "ml", repeat: 5, maxDoses: 3, obs: "USO PURO. Repetir a cada 5-15 min se necessário.", tabs: ["anafilaxia", "todos"] },
+            { id: 3, name: "Adrenalina (Push Dose)", indication: "Hipotensão aguda / Pré-intubação", pres: "10 mcg/ml (diluição)", usage: "1 mcg/kg (bolus lento)", route: "EV / IO", doseML: (w) => (0.1 * w).toFixed(1), unitML: "ml", doseMass: (w) => (1 * w).toFixed(0), unitMass: "mcg", obsHighlight: "PREPARO: 1 amp (1ml) Adrenalina + 100ml SF 0,9%", obs: "Bolus lento em 1-2 minutos. Monitorar FC e PA.", repeat: 2, maxDoses: 20, tabs: ["pcr", "choque", "todos"] },
+            { id: 4, name: "Adrenalina (BIC)", indication: "Choque refratário / Hipotensão persistente", pres: "1 mg/ml", usage: "0,1 - 1 mcg/kg/min", route: "EV (via exclusiva)", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${(0.3 * w).toFixed(2)}ml Adrena + SF 0,9% qsp 50ml. 1ml/h = 0,1 mcg/kg/min.` }, obs: "Via exclusiva + bomba. Monitorar extravasamento.", tabs: ["choque", "todos"] },
+            { id: 5, name: "Noradrenalina (BIC)", indication: "Choque séptico / Vasoplegia", pres: "1 mg/ml", usage: "0,1 - 2 mcg/kg/min", route: "EV (via exclusiva)", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${(0.3 * w).toFixed(2)}ml Nora + SF 0,9% qsp 50ml. 1ml/h = 0,1 mcg/kg/min.` }, obs: "Via exclusiva + bomba. Monitorar extravasamento.", tabs: ["choque", "todos"] },
+            { id: 6, name: "Dopamina (BIC)", indication: "Choque / Hipotensão", pres: "25 mg/ml", usage: "5 - 20 mcg/kg/min", route: "EV", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${((3 * w) / 25).toFixed(2)}ml Dopamina + SF 0,9% qsp 50ml. 1ml/h = 1 mcg/kg/min.` }, obs: "Via exclusiva + bomba.", tabs: ["choque", "todos"] },
+            { id: 7, name: "Dobutamina (BIC)", indication: "Choque cardiogênico / Baixo débito", pres: "12,5 mg/ml", usage: "5 - 20 mcg/kg/min", route: "EV", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${((3 * w) / 12.5).toFixed(2)}ml Dobuta + SF 0,9% qsp 50ml. 1ml/h = 1 mcg/kg/min.` }, obs: "Via exclusiva + bomba.", tabs: ["choque", "todos"] },
+            { id: 10, name: "Ceftriaxona (Rocephin)", indication: "Sepse / Meningite bacteriana suspeita", pres: "100 mg/ml (diluído)", usage: "100 mg/kg (máx 2 g)", route: "EV / IM", doseML: (w) => Math.min(w, 20).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(100 * w, 2000).toFixed(0), unitMass: "mg", obs: "Infundir em 30 minutos. Não misturar com cálcio.", tabs: ["choque", "todos"] },
+            { id: 13, name: "Vancomicina", indication: "Sepse com suspeita de MRSA", pres: "50 mg/ml (diluído)", usage: "15 mg/kg", route: "EV (lento)", doseML: (w) => ((15 * w) / 50).toFixed(1), unitML: "ml", doseMass: (w) => (15 * w).toFixed(0), unitMass: "mg", obs: "Infundir em 60-90 minutos. Risco de Red Man Syndrome.", tabs: ["choque", "todos"] },
+            { id: 17, name: "Hidrocortisona", indication: "Choque séptico refratário / Suspeita de insuficiência adrenal", pres: "100 mg ou 500 mg", usage: "10 mg/kg ataque (máx 200 mg)", route: "EV / IO", doseML: "---", unitML: "ml", doseMass: (w) => Math.min(10 * w, 200).toFixed(0), unitMass: "mg", obs: "Pode manter 1-2 mg/kg a cada 6h.", tabs: ["choque", "anafilaxia", "todos"] },
+            { id: 19, name: "Bicarbonato de Sódio 8,4%", indication: "Acidose metabólica grave (pH < 7,1-7,2) / Hipercalemia", pres: "1 mEq/ml", usage: "1 mEq/kg", route: "EV / IO (lento)", doseML: (w) => Math.min(w, 50).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(w, 50).toFixed(1), unitMass: "mEq", obs: "Infundir em 5-10 min. Só com ventilação adequada.", tabs: ["pcr", "choque", "todos"] },
+            { id: 21, name: "Gluconato de Cálcio 10%", indication: "Hipocalcemia sintomática / Hipermagnesemia / Hipercalemia (estabilização cardíaca)", pres: "100 mg/ml", usage: "0,5 ml/kg (50 mg/kg)", route: "EV / IO (lento)", doseML: (w) => Math.min(0.5 * w, 20).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(50 * w, 2000).toFixed(0), unitMass: "mg", obs: "Infundir em 5-10 minutos. Monitorar ECG (risco de bradicardia). Preferencial em veia periférica.", tabs: ["pcr","antidotos", "choque", "todos"] },
+            { id: 23, name: "Cloreto de Cálcio 10%", indication: "Hipercalemia grave / Hipocalcemia grave / Toxicidade por bloqueador de cálcio", pres: "100 mg/ml", usage: "20 mg/kg", route: "EV / IO (preferencial via central)", doseML: (w) => (0.2 * w).toFixed(1), unitML: "ml", doseMass: (w) => (20 * w).toFixed(0), unitMass: "mg", obs: "Mais potente que o gluconato, porém mais irritante para a veia. Infundir lentamente. Monitorar ECG.", tabs: ["pcr", "choque", "todos"] },            
+            { id: 24, name: "Adenosina", indication: "Taquicardia Supraventricular (TSV)", pres: "3 mg/ml", usage: "1ª: 0,1 mg/kg | 2ª/3ª: 0,2 mg/kg", route: "EV (push rápido)", doseML: (w, age, count) => { const factor = (count === 0) ? 0.1 : 0.2; const maxML = (count === 0) ? 2 : 4; return Math.min(factor * w / 3, maxML).toFixed(1); }, unitML: "ml", doseMass: (w, age, count) => { const factor = (count === 0) ? 0.1 : 0.2; const maxM = (count === 0) ? 6 : 12; return Math.min(factor * w, maxM).toFixed(1); }, unitMass: "mg", obs: "Flush rápido de 10-20 ml SF após dose. Elevar membro. Monitorar ECG.", repeat: 2, maxDoses: 3, tabs: ["tsv", "todos"] },
+            { id: 25, name: "Amiodarona", indication: "FV / TV sem pulso / Arritmias ventriculares", pres: "50 mg/ml", usage: "5 mg/kg", route: "EV / IO", doseML: (w) => (w / 10).toFixed(1), unitML: "ml", doseMass: (w) => (5 * w).toFixed(0), unitMass: "mg", obs: "Bolus rápido (20-60 seg) na FV/TVSP. Com pulso: infundir em 20-60 min.", repeat: 10, maxDoses: 3, tabs: ["pcr", "tsv", "todos"] },
+            { id: 26, name: "Lidocaína 2%", indication: "FV / TVSP refratária à amiodarona", pres: "20 mg/ml", usage: "1 mg/kg", route: "EV / IO", doseML: (w) => (w / 20).toFixed(1), unitML: "ml", doseMass: (w) => (w).toFixed(0), unitMass: "mg", obs: "Evitar em bloqueio cardíaco grave.", repeat: 5, maxDoses: 3, tabs: ["pcr", "todos"] },
+            { id: 27, name: "Glicose 25%", indication: "Hipoglicemia sintomática", pres: "250 mg/ml", usage: "2 ml/kg (0,5 g/kg)", route: "EV / IO", doseML: (w) => (2 * w).toFixed(1), unitML: "ml", doseMass: (w) => (0.5 * w).toFixed(1), unitMass: "g", obs: "Infundir lento (2-5 min).", tabs: ["pcr", "choque", "convulsao", "todos"] },
+            { id: 29, name: "Atropina", indication: "Bradicardia sintomática refratária / Antídoto", pres: "0,5 mg/ml", usage: "0,02 mg/kg (mín 0,1 mg)", route: "EV / IO", doseML: (w) => Math.max(0.2, (0.02 * w) / 0.5).toFixed(1), unitML: "ml", doseMass: (w) => Math.max(0.1, 0.02 * w).toFixed(2), unitMass: "mg", obs: "Mínimo 0,1 mg. Máx dose única: 0,5 mg (criança) / 1 mg (adolescente).", repeat: 5, maxDoses: 2, tabs: ["pcr", "antidotos", "todos"] },
+            { id: 30, name: "Cetamina (Ketamina)", indication: "Sedação / Indução de sequência rápida (ISR)", pres: "50 mg/ml", usage: "1,5-2 mg/kg", route: "EV / IO", doseML: (w) => (1.5 * w / 50).toFixed(1), unitML: "ml", doseMass: (w) => (1.5 * w).toFixed(1), unitMass: "mg", obs: "Preserva estabilidade hemodinâmica.", tabs: ["sedacao", "todos"] },
+            { id: 32, name: "Rocurônio", indication: "Bloqueio neuromuscular para ISR", pres: "10 mg/ml", usage: "1 mg/kg", route: "EV / IO", doseML: (w) => (w / 10).toFixed(1), unitML: "ml", doseMass: (w) => (w).toFixed(0), unitMass: "mg", obs: "Não usar sem via aérea segura.", tabs: ["sedacao", "todos"] },
+            { id: 33, name: "Fentanil (BIC)", indication: "Analgesia contínua em ventilação mecânica", pres: "50 mcg/ml", usage: "1 - 5 mcg/kg/h", route: "EV", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${w.toFixed(1)}ml Fentanil + SF 0,9% qsp 50ml. 1ml/h = 1 mcg/kg/h.` }, obs: "Monitorar de pressão respiratória.", tabs: ["sedacao", "todos"] },
+            { id: 37, name: "Salbutamol Spray", indication: "Broncoespasmo (Asma / Anafilaxia)", pres: "100 mcg / jato", usage: "2 a 10 jatos", route: "Inalatória (espaçador)", doseML: (w) => Math.min(Math.max(2, Math.ceil(w/2)), 10), unitML: "jatos", repeat: 20, maxDoses: 3, obs: "Repetir a cada 20 minutos.", tabs: ["asma", "anafilaxia", "todos"] },
+            { id: 38, name: "Atrovent (Ipratrópio)", indication: "Broncoespasmo (Asma)", pres: "0,25 mg/ml", usage: "20 gotas (<20kg) ou 40 gotas (>20kg)", route: "Inalatória", doseML: (w) => (w < 20 ? 20 : 40), unitML: "gotas", repeat: 20, maxDoses: 3, tabs: ["asma", "todos"] },
+            { id: 57, name: "Solumedrol (Metilprednisolona)", indication: "Asma grave / Anafilaxia", pres: "125 mg ou 500 mg", usage: "2 mg/kg ataque (máx 125 mg)", route: "EV / IM", doseML: "---", unitML: "ml", doseMass: (w) => Math.min(2 * w, 125).toFixed(0), unitMass: "mg", obs: "Ataque.", tabs: ["asma", "anafilaxia", "todos"] },
+            { id: 18, name: "Sulfato de Magnésio 10%", indication: "Asma grave refratária / Torsades de Pointes", pres: "100 mg/ml", usage: "50 mg/kg (0,5 ml/kg)", route: "EV / IO (lento)", doseML: (w) => Math.min(0.5 * w, 20).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(50 * w, 2000).toFixed(0), unitMass: "mg", obs: "Infundir em 15-20 minutos. Monitorar PA e ECG.", tabs: ["pcr", "asma", "todos"] },
+            { id: 39, name: "Terbutalina SC", indication: "Crise de asma grave refratária", pres: "0,5 mg/ml", usage: "0,01 mg/kg", route: "SC", doseML: (w) => Math.min(0.01 * w / 0.5, 0.5).toFixed(2), unitML: "ml", doseMass: (w) => Math.min(0.01 * w, 0.25).toFixed(2), unitMass: "mg", repeat: 15, maxDoses: 3, obs: "Monitorar taquicardia.", tabs: ["asma", "todos"] },
+            { id: 40, name: "Terbutalina Ataque EV", indication: "Crise de asma grave refratária", pres: "0,5 mg/ml", usage: "10 mcg/kg", route: "EV (lento)", doseML: (w) => ((10 * w) / 500).toFixed(1), unitML: "ml", doseMass: (w) => (10 * w).toFixed(0), unitMass: "mcg", obs: "Infundir lento.", tabs: ["asma", "todos"] },
+            { id: 41, name: "Terbutalina (BIC)", indication: "Crise de asma grave refratária", pres: "0,5 mg/ml", usage: "0,1 - 1 mcg/kg/min", route: "EV", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${(0.6 * w).toFixed(2)}ml Terbutalina + SF 0,9% qsp 50ml. 1ml/h = 0,1 mg/kg/min.` }, obs: "Monitorar taquicardia e hipocalemia.", tabs: ["asma", "todos"] },
+            { id: 42, name: "Difenidramina (Benadryl)", indication: "Reação alérgica / Anafilaxia (adjuvante)", pres: "50 mg/ml", usage: "1 mg/kg (máx 50 mg)", route: "EV / IM", doseML: (w) => Math.min(w / 50, 1).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(w, 50).toFixed(0), unitMass: "mg", obs: "Usar após adrenalina.", tabs: ["anafilaxia", "todos"] },
+            { id: 43, name: "Diazepam", indication: "Crise convulsiva", pres: "5 mg/ml", usage: "0,3 mg/kg", route: "EV / Retal", doseML: (w) => Math.min(0.3 * w / 5, 2).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(0.3 * w, 10).toFixed(1), unitMass: "mg", repeat: 5, maxDoses: 2, obs: "EV lento (risco de depressão respiratória).", tabs: ["convulsao", "sedacao", "todos"] },
+            { id: 34, name: "Midazolam (BIC)", indication: "Sedação contínua / Estado de mal convulsivo", pres: "5 mg/ml", usage: "0,1 - 0,6 mg/kg/h", route: "EV", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${w.toFixed(1)}ml Midazolam + SF 0,9% qsp 50ml. 1ml/h = 0,1 mg/kg/h.` }, obs: "Risco de depressão respiratória.", tabs: ["sedacao", "convulsao", "todos"] },
+            { id: 35, name: "Etomidato", indication: "Indução ISR (paciente hemodinamicamente estável)", pres: "2 mg/ml", usage: "0,3 mg/kg", route: "EV", doseML: (w) => (0.3 * w / 2).toFixed(1), unitML: "ml", doseMass: (w) => (0.3 * w).toFixed(1), unitMass: "mg", obs: "Evitar em sepse grave.", tabs: ["sedacao", "todos"] },
+            { id: 44, name: "Fenitoína (Hidantal)", indication: "Crise convulsiva / Prevenção", pres: "50 mg/ml", usage: "20 mg/kg", route: "EV / IO (lento)", doseML: (w) => Math.min(20 * w / 50, 20).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(20 * w, 1000).toFixed(0), unitMass: "mg", obs: "Infundir lento (máx 1 mg/kg/min).", tabs: ["convulsao", "tce", "todos"] },
+            { id: 45, name: "Fenobarbital (Gardenal)", indication: "Estado de mal convulsivo (especialmente lactentes)", pres: "100 mg/ml", usage: "20 mg/kg", route: "EV", doseML: (w) => (20 * w / 100).toFixed(1), unitML: "ml", doseMass: (w) => (20 * w).toFixed(0), unitMass: "mg", obs: "Infundir lento.", tabs: ["convulsao", "todos"] },
+            { id: 46, name: "Nitroprussiato (Nipride) (BIC)", indication: "Crise hipertensiva", pres: "25 mg/ml", usage: "0,3 - 5 mcg/kg/min", route: "EV", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${(0.3 * w).toFixed(2)}ml Nipride + SG 5% qsp 50ml. 1ml/h = 0,1 mcg/kg/min.` }, obs: "Proteger da luz.", tabs: ["hipertensao", "todos"] },
+            { id: 47, name: "Hidralazina", indication: "Hipertensão aguda", pres: "20 mg/ml", usage: "0,2 mg/kg", route: "EV", doseML: (w) => (0.2 * w / 20).toFixed(2), unitML: "ml", doseMass: (w) => (0.2 * w).toFixed(1), unitMass: "mg", obs: "Pode causar taquicardia reflexa.", tabs: ["hipertensao", "todos"] },
+            { id: 49, name: "Manitol 20%", indication: "Hipertensão intracraniana / Edema cerebral", pres: "200 mg/ml", usage: "0,5 - 1 g/kg", route: "EV (lento)", doseML: (w) => (2.5 * w).toFixed(1), unitML: "ml", doseMass: (w) => (0.5 * w).toFixed(1), unitMass: "g", obs: "Infundir em 20-30 min. Contraindicado em anúria.", tabs: ["tce", "todos"] },
+            { id: 50, name: "Dexametasona (Decadron)", indication: "Edema cerebral / HIC / Crupe / Asma grave", pres: "4 mg/ml", usage: "0,6 mg/kg (máx 16 mg)", route: "EV / IM", doseML: (w) => Math.min(0.6 * w / 4, 4).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(0.6 * w, 16).toFixed(1), unitMass: "mg", obs: "Útil também em crupe.", tabs: ["asma", "anafilaxia", "tce", "todos"] },
+            { id: 51, name: "Insulina Regular (BIC)", indication: "Cetoacidose diabética (CAD)", pres: "100 U/ml", usage: "0,1 U/kg/h", route: "EV", doseML: (w) => "BIC", unitML: "ml/h", bic: { formula: (w) => `Diluir ${(0.05 * w).toFixed(2)}ml Insulina + SF 0,9% qsp 50ml. 1ml/h = 0,1 U/kg/h.` }, obs: "Associar glicose quando glicemia < 250 mg/dl.", tabs: ["todos"] },
+            { id: 52, name: "KCl 19,1% (Manutenção)", indication: "Correção de potássio", pres: "2,5 mEq/ml", usage: "40 mEq/L (padrão)", route: "EV", doseML: (w) => "Cálculo", unitML: "ml", bic: { formula: (w) => `Diluir KCl 19,1% (8ml) + SF 0,9% (492ml).` }, tabs: ["todos"] },
+            { id: 53, name: "Naloxona (Narcan)", indication: "Reversão de opioides", pres: "0,4 mg/ml", usage: "0,1 mg/kg", route: "EV / IM", doseML: (w) => Math.min(0.1 * w / 0.4, 5).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(0.1 * w, 2).toFixed(1), unitMass: "mg", repeat: 2, maxDoses: 5, obs: "Pode precipitar abstinência.", tabs: ["antidotos", "todos"] },
+            { id: 54, name: "Flumazenil", indication: "Reversão de benzodiazepínicos", pres: "0,1 mg/ml", usage: "0,01 mg/kg", route: "EV", doseML: (w) => Math.min(0.01 * w / 0.1, 2).toFixed(1), unitML: "ml", doseMass: (w) => Math.min(0.01 * w, 0.2).toFixed(2), unitMass: "mg", obs: "Contraindicado em epilepsia ou uso crônico (risco de pesquisar).", tabs: ["antidotos", "todos"] },
+            { id: 55, name: "Sugamadex (Bridion)", indication: "Reversão de rocurônio", pres: "100 mg/ml", usage: "2 - 4 mg/kg", route: "EV", doseML: (w) => (2 * w / 100).toFixed(1), unitML: "ml", doseMass: (w) => (2 * w).toFixed(0), unitMass: "mg", tabs: ["antidotos", "todos"] },
+            { id: 56, name: "Vitamina K", indication: "Hemorragia por deficiência de vitamina K", pres: "10 mg/ml", usage: "1 mg (RN) ou 5 mg (>1 ano)", route: "IM", doseML: (w, age) => (age < 1 ? 0.1 : 0.5).toFixed(1), unitML: "ml", doseMass: (w, age) => (age < 1 ? 1 : 5), unitMass: "mg", tabs: ["todos"] }
+        ];
+
+        const getVitals = (w, age) => {
+            if (age === 0) return { label: "Recém-Nascido", fc: "100-180", fr: "30-60", pas: 60 };
+            if (age < 1) return { label: "Lactente (<1a)", fc: "100-160", fr: "30-60", pas: 70 };
+            if (age < 3) return { label: "1-2 anos", fc: "90-150", fr: "24-40", pas: 74 };
+            if (age < 6) return { label: "3-5 anos", fc: "80-140", fr: "22-34", pas: 76 };
+            if (age < 13) return { label: "6-12 anos", fc: "70-120", fr: "18-30", pas: 82 };
+            return { label: "Adolescente", fc: "60-100", fr: "12-16", pas: 90 };
+        };
+
+        const getEq = (w, age) => {
+            const tSemRaw = age === 0 ? 3.0 : (age / 4) + 4;
+            const tComRaw = age === 0 ? 2.5 : (age / 4) + 3.5;
+            const roundETT = (num) => (Math.round(num * 2) / 2).toFixed(1);
+            return {
+                semCuff: roundETT(tSemRaw),
+                comCuff: roundETT(tComRaw),
+                blade: age < 1 ? (w < 3 ? "0 Reta" : "1 Reta") : (age < 3 ? "1 Reta" : (age < 8 ? "2 Reta/Curv" : "3 Curva")),
+                mask: w < 5 ? "1" : (w < 10 ? "1.5" : (w < 20 ? "2" : (w < 30 ? "2.5" : (w < 50 ? "3" : "4")))),
+                guedel: age < 1 ? "00/000" : (age < 2 ? "0" : (age < 5 ? "1" : (age < 10 ? "2" : "3/4"))),
+                fix: (parseFloat(roundETT(tSemRaw)) * 3).toFixed(1),
+                probe: Math.floor(tSemRaw * 2)
+            };
+        };
+
+        function savePatientInfo() { patientInfo.name = document.getElementById('patientNameInput').value; patientInfo.dob = document.getElementById('patientDobInput').value; saveToStorage(); }
+        function saveToStorage() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ timers, pcrHistory, pcrShockTimerStart, pcrCycleCount, pcrRhythmType, pcrShockAppliedInCycle, tsvHistory, patientInfo, age: document.getElementById('ageInput').value, weight: document.getElementById('weightInput').value, metronomeActive, metronomeSoundEnabled })); }
+        function loadFromStorage() { const saved = localStorage.getItem(STORAGE_KEY); if (!saved) return; try { const s = JSON.parse(saved); timers = s.timers || {}; pcrHistory = s.pcrHistory || []; pcrShockTimerStart = s.pcrShockTimerStart || null; pcrCycleCount = s.pcrCycleCount || 1; pcrRhythmType = s.pcrRhythmType || null; pcrShockAppliedInCycle = s.pcrShockAppliedInCycle || false; patientInfo = s.patientInfo || { name: '', dob: '' }; tsvHistory = s.tsvHistory || { shock1: { sedated: false, synced: false, history: [] }, shock2: { sedated: false, synced: false, history: [] } }; document.getElementById('ageInput').value = s.age || 3; document.getElementById('weightInput').value = s.weight || 14; metronomeActive = s.metronomeActive || false; metronomeSoundEnabled = s.metronomeSoundEnabled !== undefined ? s.metronomeSoundEnabled : true; const ni = document.getElementById('patientNameInput'), di = document.getElementById('patientDobInput'); if (ni) ni.value = patientInfo.name; if (di) di.value = patientInfo.dob; if (metronomeActive) { metronomeActive = false; togglePcrStatus(); } } catch (e) { console.error(e); } }
+        function openResetModal() { document.getElementById('reset-confirm-modal').classList.remove('hidden'); }
+        function closeResetModal() { document.getElementById('reset-confirm-modal').classList.add('hidden'); }
+        function executeReset() { localStorage.removeItem(STORAGE_KEY); location.reload(); }
+        function closeDisclaimer() { document.getElementById('initial-disclaimer').style.display = 'none'; }
+        function openHistory() {
+            const list = document.getElementById('history-list'), modal = document.getElementById('history-modal'), actions = [], now = Date.now();
+            document.getElementById('printWeightDisplay').innerText = document.getElementById('weightInput').value + ' kg';
+            document.getElementById('printDateDisplay').innerText = new Date().toLocaleDateString('pt-BR');
+            Object.keys(timers).forEach(id => { const m = medData.find(x => x.id == id), t = timers[id]; const rem = m.repeat && t.start && t.count < (m.maxDoses || 1) ? Math.max(0, (m.repeat * 60000) - (now - t.start)) : 0; t.history.forEach((h, i) => actions.push({ label: m.name, time: h, type: 'med', timerHTML: (i === 0 && rem > 0) ? `<span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[8px] font-mono no-print">EM CURSO</span>` : '' })); });
+            if (pcrShockTimerStart && Math.max(0, 120000 - (now - pcrShockTimerStart)) > 0) actions.push({ label: 'CICLO PCR EM CURSO', time: 'AGORA', type: 'status-pcr', timerHTML: `<span class="bg-red-600 text-white px-2 py-0.5 rounded text-[8px] font-mono no-print">TIMER ATIVO</span>` });
+            pcrHistory.forEach(h => actions.push({ label: h.type, time: h.time, type: h.type.includes('RCP') ? 'status-pcr' : 'shock-pcr', timerHTML: '' }));
+            ['shock1', 'shock2'].forEach(k => tsvHistory[k].history.forEach(t => actions.push({ label: k === 'shock1' ? 'TSV: 1º Choque' : 'TSV: Choque Subseq.', time: t, type: 'shock-tsv', timerHTML: '' })));
+            actions.sort((a, b) => a.time === 'AGORA' ? -1 : (b.time === 'AGORA' ? 1 : b.time.localeCompare(a.time)));
+            list.innerHTML = actions.length === 0 ? `<div class="p-8 text-center text-[11px] font-black text-slate-300 uppercase">Nenhum registro</div>` : actions.map(a => `<div class="flex items-center justify-between p-3 rounded-2xl border ${a.type === 'med' ? 'bg-blue-50 text-blue-700 border-blue-100' : (a.type === 'status-pcr' ? 'bg-slate-900 text-white border-slate-800' : 'bg-red-50 text-red-700 border-red-100')}"><div class="flex items-center gap-3"><div class="font-mono font-black text-[11px] shrink-0 opacity-60">${a.time}</div><div class="w-px h-4 bg-current opacity-20"></div><div class="text-[10px] font-bold uppercase truncate">${a.label}</div></div>${a.timerHTML}</div>`).join('');
+            modal.classList.remove('hidden');
+        }
+        function closeHistory() { document.getElementById('history-modal').classList.add('hidden'); }
+        function initTabs() { 
+            document.getElementById('tabs-container').innerHTML = tabsOrder.map(t => 
+                `<button 
+                    onmousedown="tabStartX = event.screenX; tabStartY = event.screenY"
+                    ontouchstart="tabStartX = event.changedTouches[0].screenX; tabStartY = event.changedTouches[0].screenY"
+                    onclick="handleTabClick(event, '${t.id}')" 
+                    class="tab-btn inactive" 
+                    id="btn-${t.id}">${t.label}</button>`
+            ).join(''); 
+        }
+
+        function handleTabClick(e, tabId) {
+            let endX, endY;
+            if (e.changedTouches) {
+                endX = e.changedTouches[0].screenX;
+                endY = e.changedTouches[0].screenY;
+            } else {
+                endX = e.screenX;
+                endY = e.screenY;
+            }
+            const deltaX = Math.abs(endX - tabStartX);
+            const deltaY = Math.abs(endY - tabStartY);
+            if (deltaX < 10 && deltaY < 10) {
+                setTab(tabId);
+            }
+        }
+
+        function setTab(tab) { currentTab = tab; document.querySelectorAll('.tab-btn').forEach(b => b.className = (b.id === `btn-${tab}`) ? 'tab-btn active' : 'tab-btn inactive'); const c = document.getElementById('tabs-container'), a = document.getElementById(`btn-${tab}`); if (a) c.scrollTo({ left: a.offsetLeft - (c.offsetWidth / 2) + (a.offsetWidth / 2), behavior: 'smooth' }); render(); }
+        function updateAge(v) { const e = document.getElementById('ageInput'); e.value = Math.max(0, Math.min(parseInt(e.value || 0) + v, 18)); handleAgeInput(); }
+        function updateWeight(v) { const e = document.getElementById('weightInput'); e.value = Math.max(1, Math.min(parseInt(e.value || 1) + v, 100)); handleWeightInput(); }
+        function handleAgeInput() { const a = parseFloat(document.getElementById('ageInput').value) || 0; document.getElementById('weightInput').value = a > 0 ? (a * 2) + 8 : 3.5; saveToStorage(); render(); }
+        function handleWeightInput() { const w = parseFloat(document.getElementById('weightInput').value) || 0; document.getElementById('ageInput').value = w <= 4 ? 0 : Math.max(0, Math.round((w - 8) / 2)); saveToStorage(); render(); }
+        function isMedBlocked(id) { const m = medData.find(x => x.id === id), t = timers[id]; return m && t && t.start && m.repeat && (Date.now() - t.start) < (m.repeat * 60000); }
+        function logDose(id) { if (isMedBlocked(id)) return; const m = medData.find(x => x.id === id); if (!timers[id]) timers[id] = { start: null, history: [], count: 0, dismissed: false }; const max = m.maxDoses || (m.repeat ? null : 1); if (max && timers[id].count >= max) return; timers[id].start = Date.now(); timers[id].count++; timers[id].dismissed = false; timers[id].history.unshift(new Date().toLocaleTimeString('pt-BR')); hideAlert(); saveToStorage(); render(); updateActivityMonitor(); }
+        function logShock(tab, type) { const t = new Date().toLocaleTimeString('pt-BR'); if(tab === 'pcr') { if (pcrShockAppliedInCycle) return; const c = pcrHistory.filter(h => h.type.includes('Choque')).length + 1; pcrHistory.unshift({ type: `${c}º Choque`, time: t }); pcrShockAppliedInCycle = true; pcrShockTimerStart = Date.now(); pcrCycleAlertTriggered = false; } else if(tab === 'tsv') { if (tsvHistory[type].history.length >= (type === 'shock1' ? 1 : 3)) return; tsvHistory[type].history.unshift(t); } saveToStorage(); render(); }
+        function toggleTSVStep(k, s) { tsvHistory[k][s] = !tsvHistory[k][s]; saveToStorage(); render(); }
+        
+        function togglePcrStatus() {
+            const time = new Date().toLocaleTimeString('pt-BR');
+            if (!metronomeActive) {
+                pcrCycleCount = 1;
+                document.getElementById('rhythm-modal-title').innerText = "Iniciar RCP";
+                document.getElementById('pcr-rhythm-btn-label').innerText = "AESP / Assistolia";
+                document.getElementById('pcr-rhythm-btn-sublabel').innerText = "Ritmo Não Chocável";
+                document.getElementById('pcr-rhythm-btn-nonshock').onclick = () => confirmPcrStart('non-shockable');
+                document.getElementById('pcr-rhythm-selection-modal').classList.remove('hidden');
+            } else {
+                metronomeActive = false;
+                pcrShockTimerStart = null;
+                pcrCycleAlertTriggered = false;
+                pcrCheckingRhythm = false;
+                pcrCycleCount = 1;
+                pcrRhythmType = null;
+                pcrShockAppliedInCycle = false;
+                clearInterval(metronomeInterval);
+                metronomeInterval = null;
+                const dot = document.getElementById('metro-dot');
+                if(dot) dot.classList.remove('metro-active');
+                closePcrCycleAlert();
+                pcrHistory.unshift({ type: 'FIM RCP', time: time });
+                saveToStorage();
+                render();
+            }
+        }
+
+        function closeRhythmSelection() { document.getElementById('pcr-rhythm-selection-modal').classList.add('hidden'); }
+
+        function confirmPcrStart(type) {
+            if (type === 'organized') {
+                closeRhythmSelection();
+                document.getElementById('pulse-check-modal').classList.remove('hidden');
+                return;
+            }
+            const time = new Date().toLocaleTimeString('pt-BR');
+            pcrRhythmType = type;
+            metronomeActive = true;
+            pcrShockTimerStart = Date.now();
+            pcrCycleAlertTriggered = false;
+            pcrCheckingRhythm = false;
+            pcrShockAppliedInCycle = false;
+            if (!metronomeInterval) metronomeInterval = setInterval(playMetronomeTick, 545);
+            playMetronomeTick();
+            closeRhythmSelection();
+            if (pcrCycleCount === 1 && !pcrHistory.some(h => h.type === 'INÍCIO RCP')) {
+                pcrHistory.unshift({ type: 'INÍCIO RCP', time: time });
+            }
+            saveToStorage();
+            render();
+        }
+
+        function processPulseCheck(hasPulse) {
+            document.getElementById('pulse-check-modal').classList.add('hidden');
+            const time = new Date().toLocaleTimeString('pt-BR');
+            if (hasPulse) {
+                pcrHistory.unshift({ type: 'ROSC / PULSO PRESENTE', time: time });
+                togglePcrStatus(); 
+            } else {
+                pcrHistory.unshift({ type: 'AESP / ASSISTOLIA (SEM PULSO)', time: time });
+                confirmPcrStart('non-shockable'); 
+            }
+        }
+
+        function playMetronomeTick() { if (!metronomeActive || pcrCheckingRhythm) return; const dot = document.getElementById('metro-dot'); if (dot) { dot.classList.remove('metro-active'); void dot.offsetWidth; dot.classList.add('metro-active'); } if (metronomeSoundEnabled) { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.type = 'sine'; o.frequency.setValueAtTime(880, audioCtx.currentTime); g.gain.setValueAtTime(0.1, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1); o.start(); o.stop(audioCtx.currentTime + 0.1); } }
+        function toggleMetronomeSound() { metronomeSoundEnabled = !metronomeSoundEnabled; saveToStorage(); render(); }
+        function showPcrCycleAlert() { pcrCheckingRhythm = true; checkingStartTime = Date.now(); document.getElementById('pcr-cycle-alert-modal').classList.remove('hidden'); }
+        function closePcrCycleAlert() { pcrCheckingRhythm = false; checkingStartTime = null; document.getElementById('pcr-cycle-alert-modal').classList.add('hidden'); }
+        
+        function startNextPcrCycle() { 
+            closePcrCycleAlert(); 
+            pcrCycleCount++; 
+            pcrRhythmType = null; 
+            pcrShockAppliedInCycle = false; 
+            document.getElementById('rhythm-modal-title').innerText = `Ciclo ${pcrCycleCount}`;
+            document.getElementById('pcr-rhythm-btn-label').innerText = "Ritmo Organizado";
+            document.getElementById('pcr-rhythm-btn-sublabel').innerText = "Checar Pulso";
+            document.getElementById('pcr-rhythm-btn-nonshock').onclick = () => confirmPcrStart('organized');
+            document.getElementById('pcr-rhythm-selection-modal').classList.remove('hidden'); 
+            saveToStorage(); 
+            render(); 
+        }
+
+        function dismissAlert(id) { if (timers[id]) { timers[id].dismissed = true; hideAlert(); saveToStorage(); render(); updateActivityMonitor(); } }
+        function hideAlert() { const b = document.getElementById('global-alert-container'); b.classList.add('opacity-0', 'scale-95', 'invisible'); b.classList.remove('opacity-100', 'scale-100'); }
+        function goToMed(id) { const m = medData.find(x => x.id === id); if (!m) return; const t = m.tabs.includes(currentTab) ? currentTab : m.tabs[0]; setTab(t); setTimeout(() => { const c = document.getElementById(`med-${id}`); if (c) { window.scrollTo({ top: c.offsetTop - (document.getElementById('app-header').offsetHeight + 120), behavior: 'smooth' }); c.classList.add('ring-4', 'ring-blue-500/30'); setTimeout(() => c.classList.remove('ring-4', 'ring-blue-500/30'), 2000); } }, 100); }
+        function generateActiveMedsHTML() {
+            const now = Date.now(); let h = '';
+            pcrHistory.filter(x => x.type.includes('Choque')).slice(0, 2).forEach(s => h += `<div class="flex-shrink-0 flex flex-col items-start p-3 rounded-2xl border bg-red-600 text-white min-w-[110px] shadow-sm"><span class="text-[7px] font-black uppercase tracking-tighter opacity-80 mb-1 leading-none">Aplicado</span><div class="flex items-center w-full justify-between leading-none"><span class="text-[12px] font-black uppercase">${s.type}</span><span class="font-mono ml-2 font-black">⚡</span></div></div>`);
+            if (pcrShockTimerStart) { const r = Math.max(0, 120000 - (now - pcrShockTimerStart)), m = Math.floor(r/60000), s = Math.floor((r%60000)/1000); h += `<button onclick="setTab('pcr')" class="flex-shrink-0 flex flex-col items-start p-3 rounded-2xl border ${r === 0 ? 'bg-red-600 text-white animate-pulse' : 'bg-red-50 text-red-700 border-red-200'} min-w-[110px] shadow-sm active:scale-95"><span class="text-[7px] font-black uppercase mb-1 leading-none">Checagem</span><div class="flex items-center w-full justify-between leading-none"><span class="text-[9px] font-black uppercase">${r === 0 ? 'AGORA' : 'Restam'}</span><span class="font-mono ml-2 font-black">${m}:${s.toString().padStart(2,'0')}</span></div></button>`; }
+            Object.keys(timers).filter(id => timers[id].count > 0).forEach(id => { const m = medData.find(x => x.id == id), t = timers[id], max = m.repeat ? (m.maxDoses || null) : 1, reached = max && t.count >= max; let txt = "Aplicado", col = "bg-emerald-100 text-emerald-700 border-emerald-200", dis = ""; if (m.repeat && t.start && !reached) { const r = Math.max(0, (m.repeat * 60000) - (now - t.start)); if (r > 0) { txt = "Em Curso"; col = "bg-amber-100 text-amber-700 border-amber-200"; dis = `<span class="font-mono ml-2 font-black">${Math.floor(r/60000)}:${Math.floor((r%60000)/1000).toString().padStart(2,'0')}</span>`; } else { txt = "Pronto"; col = !t.dismissed ? "bg-red-600 text-white animate-pulse" : "bg-emerald-100 text-emerald-700 border-emerald-200"; } } else if (reached) { txt = "Concluído"; col = "bg-slate-200 text-slate-500 border-slate-300"; } h += `<button onclick="goToMed(${id})" class="flex-shrink-0 flex flex-col items-start p-3 rounded-2xl border ${col} min-w-[110px] shadow-sm active:scale-95"><span class="text-[7px] font-black uppercase opacity-80 mb-1 leading-none">${m.name}</span><div class="flex items-center w-full justify-between leading-none"><span class="text-[9px] font-black uppercase">${txt}</span>${dis}</div></button>`; });
+            return h;
+        }
+        function updateActivityMonitor() { const s = document.getElementById('activity-monitor'), l = document.getElementById('active-meds-list'), h = generateActiveMedsHTML(); if (!h) s.classList.add('hidden'); else { s.classList.remove('hidden'); l.innerHTML = h; } }
+        function renderMedCardHTML(m, w, a) {
+            const t = timers[m.id], c = t?.count || 0, ml = typeof m.doseML === 'function' ? m.doseML(w, a, c) : m.doseML, ms = typeof m.doseMass === 'function' ? m.doseMass(w, a, c) : m.doseMass, max = m.repeat ? (m.maxDoses || null) : 1, reached = max && c >= max;
+            const r = (m.repeat && t?.start) ? Math.max(0, (m.repeat * 60000) - (Date.now() - t.start)) : 0;
+            return `<div id="med-${m.id}" class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow relative overflow-hidden transition-all"><div class="flex justify-between items-start gap-4"><div class="flex-1 space-y-2"><h3 class="font-black text-slate-900 text-[15px] uppercase leading-tight border-b border-slate-50 pb-1">${m.name}</h3><div class="grid gap-1"><div class="flex gap-2"><span class="text-[8px] font-black text-slate-400 uppercase w-16 shrink-0">Indicação:</span><p class="text-[10px] font-bold text-blue-600 uppercase leading-tight">${m.indication}</p></div><div class="flex gap-2"><span class="text-[8px] font-black text-slate-400 uppercase w-16 shrink-0">Apresent:</span><p class="text-[10px] font-bold text-slate-600 leading-tight">${m.pres}</p></div><div class="flex gap-2"><span class="text-[8px] font-black text-slate-400 uppercase w-16 shrink-0">Dose Sug:</span><p class="text-[10px] font-black text-slate-800 leading-tight">${m.usage}</p></div><div class="flex gap-2"><span class="text-[8px] font-black text-slate-400 uppercase w-16 shrink-0">Via Adm:</span><p class="text-[10px] font-black text-slate-900 underline uppercase leading-tight">${m.route}</p></div>${m.obs ? `<div class="flex gap-2 mt-1"><span class="text-[8px] font-black text-slate-400 uppercase w-16 shrink-0">Observ:</span><p class="text-[9px] font-medium text-slate-500 leading-tight italic">● ${typeof m.obs === 'function' ? m.obs(w, a) : m.obs}</p></div>` : ''}</div></div><div class="text-right flex flex-col items-end min-w-[90px] pt-1"><div class="flex items-baseline gap-1"><span class="text-3xl font-black text-blue-700 leading-none">${ml}</span><span class="text-[11px] font-black text-blue-400 uppercase">${m.unitML || 'ml'}</span></div>${ms && ms !== "---" ? `<div class="mt-1 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100"><span class="text-[11px] font-black text-slate-400 italic">(${ms} ${m.unitMass || 'mg'})</span></div>` : ''}</div></div>${m.bic ? `<div class="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 text-[11px] text-slate-700 font-bold leading-tight"><span class="text-[9px] font-black text-blue-800 uppercase block mb-1">⚙️ Preparo BIC:</span>${m.bic.formula(w)}</div>` : ''}${m.obsHighlight ? `<div class="mt-3 p-3 bg-red-600 rounded-2xl text-[10px] text-white font-black shadow-md">⚠️ ${m.obsHighlight}</div>` : ''}<div class="timer-box mt-4 p-4 bg-slate-50 rounded-3xl border border-slate-100 transition-colors"><div class="flex items-center justify-between mb-3"><div class="flex flex-col">${m.repeat ? `<span class="text-[8px] font-black text-slate-400 uppercase mb-1">Próxima Dose</span><span class="text-2xl font-black tabular-nums ${reached ? 'text-slate-200' : 'text-slate-800'}" data-tid="${m.id}" data-interval="${m.repeat}">--:--</span>` : `<span class="text-[8px] font-black text-slate-400 uppercase mb-1">Registro</span><span class="text-sm font-black text-slate-500 uppercase">${reached ? 'Dose Aplicada' : 'Aplicação Única'}</span>`}</div><div class="text-[10px] font-black text-slate-700 uppercase">Doses: ${c} ${max ? `/ ${max}` : ''}</div></div><div class="flex gap-3"><div class="flex-1 max-h-24 overflow-y-auto no-scrollbar space-y-1">${t?.history.map((h, i) => `<div class="bg-blue-100 text-blue-700 text-[9px] px-2 py-1 rounded-lg font-black flex justify-between"><span>Dose ${t.history.length - i}</span><span>${h}</span></div>`).join('') || '<div class="text-[9px] text-slate-300 italic p-1">Nenhum registro</div>'}</div><button onclick="logDose(${m.id})" ${reached || r > 0 ? 'disabled' : ''} class="h-12 px-6 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95 disabled:opacity-20">${reached ? 'APLICADO' : (r > 0 ? 'BLOQUEADO' : 'Fazer Dose')}</button></div></div></div>`;
+        }
+        function render() {
+            const w = parseFloat(document.getElementById('weightInput').value) || 1, a = parseInt(document.getElementById('ageInput').value) || 0, c = document.getElementById('content'), v = getVitals(w, a);
+            document.getElementById('vitalLabel').innerText = v.label; document.getElementById('vitalFC').innerText = v.fc; document.getElementById('vitalFR').innerText = v.fr; document.getElementById('vitalPAS').innerText = `> ${v.pas}`;
+            let h = "";
+            if (currentTab === 'equipamentos' || currentTab === 'todos') { const eq = getEq(w, a); h += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="bg-white p-5 rounded-3xl card-shadow border border-slate-100"><h3 class="text-[10px] font-black text-blue-800 uppercase mb-4 tracking-widest">🩺 Via Aérea</h3><div class="space-y-3 text-sm"><div class="flex justify-between border-b pb-2"><span>Tubo s/ Cuff</span><span class="font-black">${eq.semCuff}</span></div><div class="flex justify-between border-b pb-2"><span>Tubo c/ Cuff</span><span class="font-black">${eq.comCuff}</span></div><div class="flex justify-between border-b pb-2 text-blue-700 font-bold"><span>Fixação</span><span>${eq.fix} cm</span></div><div class="flex justify-between"><span>Lâmina</span><span class="font-black">${eq.blade}</span></div></div></div><div class="bg-white p-5 rounded-3xl card-shadow border border-slate-100"><h3 class="text-[10px] font-black text-blue-800 uppercase mb-4 tracking-widest">📦 Acessórios</h3><div class="space-y-3 text-sm"><div class="flex justify-between border-b pb-2"><span>Másc. Laríngea</span><span class="font-black">${eq.mask}</span></div><div class="flex justify-between border-b pb-2"><span>Guedel</span><span class="font-black">${eq.guedel}</span></div><div class="flex justify-between"><span>Sonda Foley</span><span class="font-black">${eq.probe} Fr</span></div></div></div></div>`; }
+            if (currentTab === 'ventilacao' || currentTab === 'todos') { const vt = (w*6).toFixed(0)+"-"+(w*8).toFixed(0), ti = a < 1 ? 0.5 : (a < 5 ? 0.7 : (a < 12 ? 0.9 : 1.0)), fr = a < 1 ? 30 : (a < 5 ? 20 : 16); h += `<div class="space-y-4"><div class="bg-blue-900 p-6 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden"><div class="absolute top-0 right-0 p-4 opacity-10 text-4xl">🫁</div><h3 class="text-xs font-black uppercase tracking-widest mb-4 border-b border-white/20 pb-2 text-blue-300">Ajustes Iniciais Padrão</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-6"><div class="space-y-3"><p class="text-[10px] font-black uppercase bg-blue-800 px-3 py-1 rounded-lg w-fit">Modo VCV (Volume)</p><div class="grid grid-cols-2 gap-2 text-sm"><div><p class="text-[8px] uppercase opacity-60">VC (6-8ml/kg)</p><p class="font-black">${vt} ml</p></div><div><p class="text-[8px] uppercase opacity-60">Fluxo</p><p class="font-black">Onda Quadrada</p></div></div></div><div class="space-y-3"><p class="text-[10px] font-black uppercase bg-blue-700 px-3 py-1 rounded-lg w-fit">Modo PCV (Pressão)</p><div class="grid grid-cols-2 gap-2 text-sm"><div><p class="text-[8px] uppercase opacity-60">P. Insp.</p><p class="font-black">15-20 cmH2O</p></div><div><p class="text-[8px] uppercase opacity-60">Alvo de VC</p><p class="font-black">${vt} ml</p></div></div></div></div><div class="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/10 text-center"><div><p class="text-[8px] uppercase opacity-60">FR</p><p class="text-sm font-black">${fr} ipm</p></div><div><p class="text-[8px] uppercase opacity-60">T. Insp.</p><p class="text-sm font-black">${ti} s</p></div><div><p class="text-[8px] uppercase opacity-60">PEEP</p><p class="text-sm font-black">5 cmH2O</p></div></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px]">${[{ t: '🟢 Protetora (SARA)', c: 'emerald-600', m: 'PCV ou VCV', l: [`VC: 6 ml/kg`, `PEEP: 8-10`, `FR: ${fr}`, `FiO2: < 60%`] }, { t: '🟠 Obstrutiva (Asma)', c: 'orange-600', m: 'VCV', l: [`VC: 6-8 ml/kg`, `PEEP: 0-3`, `FR: 10-14`, `Rel. I:E: 1:4`] }, { t: '🔵 Neuro (HIC)', c: 'purple-600', m: 'PCV ou VCV', l: [`Alvo PaCO2: 35-38`, `PEEP: 5`, `FR: Ajustar`, `Cabeceira: 30-45º`] }, { t: '🟡 Choque', c: 'blue-600', m: 'PCV', l: [`Evitar Altas Pressões`, `PEEP: 5`, `FR: Padrão`, `Sedar/Bloquear`] }].map(x => `<div class="bg-white p-5 rounded-3xl border border-slate-100 card-shadow"><div class="flex justify-between items-start mb-3"><h4 class="font-black text-${x.c} uppercase">${x.t}</h4><span class="bg-slate-100 text-[8px] px-2 py-0.5 rounded-md font-bold text-slate-500">${x.m}</span></div><ul class="space-y-1.5 font-bold text-slate-600">${x.l.map(li => `<li class="flex items-center gap-2 border-b border-slate-50 pb-1"><span class="w-1 h-1 rounded-full bg-slate-300"></span>${li}</li>`).join('')}</ul></div>`).join('')}</div></div>`; }
+            if (currentTab === 'pcr' || currentTab === 'todos') {
+                const sc = pcrHistory.filter(h => h.type.includes('Choque')).length, ad = medData.find(x => x.id === 1), am = medData.find(x => x.id === 25), gm = (x) => typeof x.doseML === 'function' ? x.doseML(w, a, timers[x.id]?.count || 0) : x.doseML;
+                const sa = !pcrRhythmType || pcrRhythmType === 'shockable', na = !pcrRhythmType || pcrRhythmType === 'non-shockable';
+                const adBlocked = isMedBlocked(1);
+                const amBlocked = isMedBlocked(25);
+                const shockLabel = sc === 0 ? `1º Choque (${Math.min(w*2,200)}J)` : `Choque Subseq. (${Math.min(w*4,360)}J)`;
+
+                h += `<div class="space-y-4"><div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow overflow-hidden"><div class="flex items-center justify-between mb-4 border-b border-slate-50 pb-4"><div class="flex items-center gap-4"><div id="metro-dot" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center transition-all"><span class="text-2xl">🫀</span></div><div><h3 class="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Qualidade da RCP</h3><p class="text-[12px] font-bold text-blue-600">110 bpm • Ciclo: ${pcrCycleCount}</p></div></div><div class="no-print flex gap-2"><button onclick="toggleMetronomeSound()" class="w-12 h-12 flex items-center justify-center rounded-2xl border ${metronomeSoundEnabled ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-slate-50 border-slate-200 text-slate-300'}">${metronomeSoundEnabled ? '🔊' : '🔇'}</button><button onclick="togglePcrStatus()" class="px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all ${metronomeActive ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'}">${metronomeActive ? 'Encerrar RCP' : 'Iniciar RCP'}</button></div></div><div class="mb-6"><div class="flex justify-between items-center px-1"><span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tempo de Ciclo</span><span id="pcr-cycle-label" class="text-[8px] font-black text-slate-400">---</span></div><div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden"><div id="pcr-cycle-progress" class="h-full bg-blue-500 transition-all duration-1000" style="width: 0%"></div></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-red-50 p-4 rounded-3xl border border-red-100 space-y-3 ${!sa ? 'opacity-30 grayscale pointer-events-none' : ''} transition-all">
+                    <div class="flex justify-between items-center border-b border-red-200 pb-2"><span class="text-[10px] font-black text-red-700 uppercase">Chocáveis - FV/TV</span><span class="text-[9px] font-bold text-red-400">⚡ 2-4-10 J/kg</span></div>
+                    <button onclick="logShock('pcr')" ${pcrShockAppliedInCycle ? 'disabled' : ''} class="w-full p-3 rounded-2xl font-black text-[9px] uppercase shadow-sm transition-all ${pcrShockAppliedInCycle ? 'btn-pcr-disabled' : (sc === 0 ? 'bg-white text-red-700 border border-red-200' : 'bg-red-600 text-white')} active:scale-95">
+                        ${pcrShockAppliedInCycle ? 'CHOQUE APLICADO' : shockLabel}
+                    </button>
+                    <button onclick="logDose(1)" ${adBlocked ? 'disabled' : ''} class="w-full bg-white border border-red-200 p-3 rounded-2xl flex justify-between items-center active:scale-95 ${adBlocked ? 'btn-pcr-disabled' : ''}">
+                        <div class="flex flex-col text-left"><span class="text-[8px] font-black text-red-400 uppercase">Dose Imediata</span><span class="text-[10px] font-black text-red-700 uppercase">Adrenalina: ${gm(ad)}ml</span></div>
+                        <span class="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[8px] font-black">${adBlocked ? 'AGUARDAR' : 'APLICAR'}</span>
+                    </button>
+                    <button onclick="logDose(25)" ${amBlocked ? 'disabled' : ''} class="w-full bg-white border border-red-200 p-3 rounded-2xl flex justify-between items-center active:scale-95 ${amBlocked ? 'btn-pcr-disabled' : ''}">
+                        <div class="flex flex-col text-left"><span class="text-[8px] font-black text-red-400 uppercase">Após 2º Choque</span><span class="text-[10px] font-black text-red-700 uppercase">Amiodarona: ${gm(am)}ml</span></div>
+                        <span class="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[8px] font-black">${amBlocked ? 'AGUARDAR' : 'APLICAR'}</span>
+                    </button>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-3xl border border-blue-100 space-y-3 ${!na ? 'opacity-30 grayscale pointer-events-none' : ''} transition-all">
+                    <div class="flex justify-between items-center border-b border-blue-200 pb-2"><span class="text-[10px] font-black text-blue-700 uppercase">AESP / ASSIST.</span><span class="text-[9px] font-bold text-blue-400">💉 Imediato</span></div>
+                    <button onclick="logDose(1)" ${adBlocked ? 'disabled' : ''} class="w-full bg-white border border-blue-200 p-5 rounded-2xl flex justify-between items-center active:scale-95 ${adBlocked ? 'btn-pcr-disabled' : ''}">
+                        <div class="flex flex-col text-left"><span class="text-[9px] font-black text-blue-400 uppercase">Adrenalina o mais rápido</span><span class="text-[12px] font-black text-blue-800 uppercase">${gm(ad)}ml</span></div>
+                        <span class="${adBlocked ? 'bg-slate-400' : 'bg-blue-600'} text-white px-3 py-1.5 rounded-xl text-[9px] font-black">${adBlocked ? 'AGUARDAR' : 'APLICAR'}</span>
+                    </button>
+                </div>
+                </div></div>
+                <div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow">
+                    <h3 class="text-[10px] font-black text-blue-800 uppercase mb-4 tracking-widest">🔍 Causas Reversíveis (5Hs e 5Ts)</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[9px] font-black text-blue-600 uppercase mb-2 border-b border-blue-50">5 Hs</p>
+                            <ul class="text-[10px] font-bold text-slate-600 space-y-1">
+                                <li>• Hipovolemia</li>
+                                <li>• Hipóxia</li>
+                                <li>• Hidrogénio (Acidose)</li>
+                                <li>• Hipo/Hipercalemia</li>
+                                <li>• Hipotermia</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-black text-blue-600 uppercase mb-2 border-b border-blue-50">5 Ts</p>
+                            <ul class="text-[10px] font-bold text-slate-600 space-y-1">
+                                <li>• Tensão (Pneumotórax)</li>
+                                <li>• Tamponamento</li>
+                                <li>• Toxinas</li>
+                                <li>• Trombose Pulmonar</li>
+                                <li>• Trombose Coronária</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                </div>`; 
+            }
+            if (currentTab === 'tsv' || currentTab === 'todos') { const adm = medData.find(x => x.id === 24); h += `<div class="space-y-4"><div class="bg-slate-100 p-4 rounded-[1.5rem] border border-slate-200 card-shadow"><h3 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 leading-none">Manobras Vagais</h3><p class="text-[11px] font-bold text-slate-600 italic">Gelo na face ou Valsalva.</p></div>${currentTab === 'tsv' ? renderMedCardHTML(adm, w, a) : ''}<div class="bg-amber-500 p-4 rounded-[2rem] text-white shadow-xl overflow-hidden"><h3 class="text-[10px] font-black uppercase tracking-widest mb-3 border-b border-white/20 pb-1">Cardioversão Sincronizada ⚡</h3><div class="space-y-3">${[1, 2].map(n => { const k = `shock${n}`, s = tsvHistory[k]; const max = n === 1 ? 1 : 3, lim = s.history.length >= max; return `<div class="bg-amber-600/40 p-3 rounded-2xl border border-white/10"><div class="flex justify-between items-center mb-2"><p class="text-[8px] font-black uppercase opacity-80">${n === 1 ? '1º Choque' : 'Subseq.'}</p><p class="text-xl font-black">${Math.min(w * n, n === 1 ? 50 : 100)}J</p></div><div class="grid grid-cols-2 gap-2 mb-2 no-print"><label class="flex items-center gap-1.5 bg-black/10 p-2 rounded-xl cursor-pointer"><input type="checkbox" class="w-4 h-4 accent-blue-600" ${s.sedated ? 'checked' : ''} onchange="toggleTSVStep('${k}','sedated')"><span class="text-[8px] font-bold uppercase">Sedar</span></label><label class="flex items-center gap-1.5 bg-black/10 p-2 rounded-xl cursor-pointer"><input type="checkbox" class="w-4 h-4 accent-blue-600" ${s.synced ? 'checked' : ''} onchange="toggleTSVStep('${k}','synced')"><span class="text-[8px] font-bold uppercase">Sinc.</span></label></div><button onclick="logShock('tsv','${k}')" ${lim ? 'disabled' : ''} class="no-print w-full bg-white text-amber-700 py-2 rounded-xl font-black text-[9px] uppercase shadow-md active:scale-95">APLICAR</button><div class="mt-2 flex gap-1 overflow-x-auto no-scrollbar">${s.history.map(t => `<span class="bg-black/20 px-2 py-0.5 rounded text-[8px] font-black">${t}</span>`).join('')}</div></div>`; }).join('')}</div></div></div>`; }
+            medData.filter(m => currentTab === 'todos' || (m.tabs && m.tabs.includes(currentTab))).forEach(m => { if (currentTab === 'tsv' && m.id === 24) return; h += renderMedCardHTML(m, w, a); });
+            c.innerHTML = h; updateActivityMonitor();
+        }
+
+        setInterval(() => {
+            const now = Date.now(); let am = null;
+            document.querySelectorAll('[data-tid]').forEach(el => { const id = el.dataset.tid, t = timers[id]; if (t?.start) { const r = Math.max(0, (parseFloat(el.dataset.interval) * 60000) - (now - t.start)), m = Math.floor(r/60000), s = Math.floor((r%60000)/1000); el.innerText = `${m}:${s.toString().padStart(2,'0')}`; const box = el.closest('.timer-box'); if (box) box.classList.toggle('timer-ready', r === 0 && !t.dismissed); } });
+            const cp = document.getElementById('pcr-cycle-progress'), cl = document.getElementById('pcr-cycle-label');
+            if (pcrShockTimerStart && !pcrCheckingRhythm) { const elap = now - pcrShockTimerStart, rem = Math.max(0, 120000 - elap), perc = Math.min(100, (elap/120000)*100); if (cp) cp.style.width = `${perc}%`; if (cl) cl.innerText = rem === 0 ? 'CHECAR RITMO!' : `RESTA: ${Math.floor(rem/60000)}:${Math.floor((rem%60000)/1000).toString().padStart(2,'0')}`; if (rem === 0 && !pcrCycleAlertTriggered) { showPcrCycleAlert(); pcrCycleAlertTriggered = true; } }
+            if (pcrCheckingRhythm && checkingStartTime) { const rem = Math.max(0, 10000 - (now - checkingStartTime)); if (document.getElementById('checking-progress-bar')) document.getElementById('checking-progress-bar').style.width = `${(rem/10000)*100}%`; if (document.getElementById('checking-countdown')) document.getElementById('checking-countdown').innerText = `${Math.ceil(rem/1000)}s`; if (rem === 0) startNextPcrCycle(); }
+            Object.keys(timers).forEach(id => { const m = medData.find(x => x.id == id), t = timers[id]; if (m && m.repeat && t && t.start && !t.dismissed && Math.max(0, (m.repeat * 60000) - (now - t.start)) === 0 && (!m.maxDoses || t.count < m.maxDoses)) am = m; });
+            const box = document.getElementById('global-alert-container');
+            if (am) { document.getElementById('alert-message').innerText = `A medicação ${am.name} terminou.`; document.getElementById('alert-go-btn').onclick = () => goToMed(am.id); document.getElementById('alert-dismiss-btn').onclick = () => dismissAlert(am.id); box.classList.remove('opacity-0','scale-95','invisible'); box.classList.add('opacity-100','scale-100'); } else hideAlert();
+            updateActivityMonitor();
+        }, 1000);
+
+        function updateHeaderHeight() { const h = document.getElementById('app-header'); if (h) document.documentElement.style.setProperty('--header-height', h.offsetHeight + 'px'); }
+        window.onload = () => { loadFromStorage(); updateHeaderHeight(); initTabs(); setTab('equipamentos'); window.addEventListener('resize', updateHeaderHeight); };
+    </script>
+
+<script>
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  });
+  document.onkeydown = function(e) {
+    if (e.keyCode == 123) return false;
+    if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+    if (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0))) return false;
+    if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) return false;
+  };
+</script>
+</body>
+</html>
