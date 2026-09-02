@@ -468,12 +468,12 @@
     </main>
 
     <footer class="bg-slate-100 text-slate-400 py-6 px-4 text-center border-t border-slate-200 mt-auto no-print">
-        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v2.1 (Clique p/ Versões)</p>
+        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v2.2 (Clique p/ Versões)</p>
         <p class="text-[9px] font-bold uppercase tracking-tighter opacity-70 italic">Apenas para referência. Conferir doses antes da administração.</p>
     </footer>
 
     <script>
-        // --- BLINDAEM DE CÓDIGO & SEGURANÇA (Anti-Inspeção / Proteção) ---
+        // --- BLINDAGEM DE CÓDIGO & SEGURANÇA (Anti-Inspeção / Proteção) ---
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
         });
@@ -491,6 +491,14 @@
         // --- HISTÓRICO DE VERSÕES (CHANGELOG) ---
         const versionHistory = [
             {
+                version: "v2.2",
+                date: "02/09/2026 14:40",
+                changes: [
+                    "Atualizada a fórmula da Insulina Regular (BIC) para o padrão de 50 UI em 500 ml de SF 0,9% (0,1 UI/ml), onde a velocidade em ml/h equivale exatamente ao peso da criança (ex: 14 kg = 14 ml/h para 0,1 U/kg/h).",
+                    "Mantidas todas as melhorias anteriores de segurança e tetos terapêuticos."
+                ]
+            },
+            {
                 version: "v2.1",
                 date: "02/09/2026 12:30",
                 changes: [
@@ -507,14 +515,6 @@
                     "Implementada blindagem avançada anti-inspeção e bloqueio de atalhos de desenvolvedor.",
                     "Correção do cálculo dinâmico de jatos de Salbutamol conforme faixa de peso (<20kg e >=20kg).",
                     "Revisão científica rigorosa das doses pediátricas (AHA/SBP/Einstein) e tetos de segurança."
-                ]
-            },
-            {
-                version: "v1.9",
-                date: "02/09/2026 09:30",
-                changes: [
-                    "Inserção de campos de ajuste de dose customizada nos cards de medicação com unidades explícitas.",
-                    "Otimização de performance com eliminação de recálculos redundantes de DOM."
                 ]
             },
             {
@@ -676,10 +676,26 @@
             { id: 34, name: "Midazolam (BIC)", indication: "Sedação / Mal convulsivo", pres: "50 mg/10ml", usage: "0,1 mg/kg/h", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(w).toFixed(1)}ml Midazolam + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 mg/kg/h.` }, obs: "Monitorar hemodinâmica.", tabs: ["sedacao", "convulsao", "todos"] },
             { id: 49, name: "Manitol 20%", indication: "HIC / Edema cerebral", pres: "200 mg/ml", usage: "0,5 - 1 g/kg", defaultMgKg: 0.5, doseUnit: "g/kg", unitDisplay: "g/kg", editable: true, isMass: true, route: "EV (lento)", doseML: (w, a, c, ov) => ((ov !== undefined ? ov : 0.5) * 5 * w).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 0.5) * w).toFixed(1), unitMass: "g", obs: "Infundir em 20-30 min.", tabs: ["tce", "todos"] },
             { id: 50, name: "Dexametasona", indication: "Edema cerebral / Crupe / Asma", pres: "4 mg/ml", usage: "0,6 mg/kg", defaultMgKg: 0.6, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.6) * w / 4, 4).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.6) * w, 16).toFixed(1), unitMass: "mg", obs: "Teto: 16 mg.", tabs: ["tce", "todos"] },
-            { id: 51, name: "Insulina Regular (BIC)", indication: "Cetoacidose Diabética (CAD)", pres: "100 U/ml", usage: "0,1 U/kg/h", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.05 * w).toFixed(2)}ml Insulina + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 U/kg/h.` }, obs: "Após hidratação inicial e expansão.", tabs: ["cad", "todos"] },
+            { 
+                id: 51, 
+                name: "Insulina Regular (BIC)", 
+                indication: "Cetoacidose Diabética (CAD)", 
+                pres: "100 UI/ml", 
+                usage: "0,1 UI/kg/h", 
+                defaultMgKg: 0.1, 
+                editable: false, 
+                route: "EV", 
+                doseML: (w) => "BIC", 
+                unitML: "ml/h", 
+                bic: { 
+                    formula: (w) => `Diluir <strong>50 UI (0,5 ml) de Insulina Regular</strong> + SF 0,9% qsp <strong>500 ml</strong>.<br>Infusão: <strong>${w.toFixed(0)} ml/h</strong> (Equivalente a 0,1 U/kg/h).` 
+                }, 
+                obs: "Após hidratação inicial e expansão. Manter glicemia entre 150-250 mg/dl.", 
+                tabs: ["cad", "todos"] 
+            },
             { 
                 id: 52, 
-                name: "KCl 19,1% (Correção na CAD)", 
+                name: "KCl 19,1% (Correção na C.A.D.)", 
                 indication: "Correção de potássio na Cetoacidose Diabética", 
                 pres: "2,5 mEq/ml", 
                 usage: "Conc. Máx 25 mEq/L | Vel. Máx 0,25 mEq/kg/h", 
