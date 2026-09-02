@@ -468,7 +468,7 @@
     </main>
 
     <footer class="bg-slate-100 text-slate-400 py-6 px-4 text-center border-t border-slate-200 mt-auto no-print">
-        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v2.0 (Clique p/ Versões)</p>
+        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v2.1 (Clique p/ Versões)</p>
         <p class="text-[9px] font-bold uppercase tracking-tighter opacity-70 italic">Apenas para referência. Conferir doses antes da administração.</p>
     </footer>
 
@@ -491,14 +491,22 @@
         // --- HISTÓRICO DE VERSÕES (CHANGELOG) ---
         const versionHistory = [
             {
+                version: "v2.1",
+                date: "02/09/2026 12:30",
+                changes: [
+                    "Adicionada aba dedicada C.A.D. (Cetoacidose Diabética) contendo Insulina Regular (BIC) e KCl 19,1% (Correção).",
+                    "Atualizado card do KCl 19,1% para 'Correção na C.A.D.' com segurança reforçada: velocidade máxima de infusão ajustada para 0,25 mEq/kg/h.",
+                    "Integrado log automático detalhado com dose e massa total nas medicações."
+                ]
+            },
+            {
                 version: "v2.0",
                 date: "02/09/2026 11:45",
                 changes: [
                     "Adicionado log histórico de versões e atualizações clicável no rodapé.",
                     "Implementada blindagem avançada anti-inspeção e bloqueio de atalhos de desenvolvedor.",
                     "Correção do cálculo dinâmico de jatos de Salbutamol conforme faixa de peso (<20kg e >=20kg).",
-                    "Revisão científica rigorosa das doses pediátricas (AHA/SBP/Einstein) e tetos de segurança.",
-                    "Adicionadas travas e cálculo automatizado de concentração e velocidade máxima para infusão de KCl 19,1% em BIC."
+                    "Revisão científica rigorosa das doses pediátricas (AHA/SBP/Einstein) e tetos de segurança."
                 ]
             },
             {
@@ -506,16 +514,14 @@
                 date: "02/09/2026 09:30",
                 changes: [
                     "Inserção de campos de ajuste de dose customizada nos cards de medicação com unidades explícitas.",
-                    "Otimização de performance com eliminação de recálculos redundantes de DOM (Layout Thrashing).",
-                    "Aprimoramento do monitor de atividades e timers de PCR."
+                    "Otimização de performance com eliminação de recálculos redundantes de DOM."
                 ]
             },
             {
                 version: "v1.0",
                 date: "15/01/2026 08:00",
                 changes: [
-                    "Lançamento inicial do aplicativo Hospital PRONTIL - Emergência Pediátrica.",
-                    "Estruturação base das abas, calculadoras de peso/idade, via aérea e drogas de suporte avançado."
+                    "Lançamento inicial do aplicativo Hospital PRONTIL - Emergência Pediátrica."
                 ]
             }
         ];
@@ -553,6 +559,7 @@
             { id: 'tsv', label: 'TSV' },
             { id: 'tce', label: 'TCE/HIC' },
             { id: 'hipertensao', label: 'Hipertensão' },
+            { id: 'cad', label: 'C.A.D.' },
             { id: 'antidotos', label: 'Antídotos' },
             { id: 'todos', label: 'Lista Geral' }
         ];
@@ -669,29 +676,29 @@
             { id: 34, name: "Midazolam (BIC)", indication: "Sedação / Mal convulsivo", pres: "50 mg/10ml", usage: "0,1 mg/kg/h", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(w).toFixed(1)}ml Midazolam + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 mg/kg/h.` }, obs: "Monitorar hemodinâmica.", tabs: ["sedacao", "convulsao", "todos"] },
             { id: 49, name: "Manitol 20%", indication: "HIC / Edema cerebral", pres: "200 mg/ml", usage: "0,5 - 1 g/kg", defaultMgKg: 0.5, doseUnit: "g/kg", unitDisplay: "g/kg", editable: true, isMass: true, route: "EV (lento)", doseML: (w, a, c, ov) => ((ov !== undefined ? ov : 0.5) * 5 * w).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 0.5) * w).toFixed(1), unitMass: "g", obs: "Infundir em 20-30 min.", tabs: ["tce", "todos"] },
             { id: 50, name: "Dexametasona", indication: "Edema cerebral / Crupe / Asma", pres: "4 mg/ml", usage: "0,6 mg/kg", defaultMgKg: 0.6, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.6) * w / 4, 4).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.6) * w, 16).toFixed(1), unitMass: "mg", obs: "Teto: 16 mg.", tabs: ["tce", "todos"] },
-            { id: 51, name: "Insulina Regular (BIC)", indication: "Cetoacidose (CAD)", pres: "100 U/ml", usage: "0,1 U/kg/h", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.05 * w).toFixed(2)}ml Insulina + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 U/kg/h.` }, obs: "Após hidratação inicial.", tabs: ["todos"] },
+            { id: 51, name: "Insulina Regular (BIC)", indication: "Cetoacidose Diabética (CAD)", pres: "100 U/ml", usage: "0,1 U/kg/h", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.05 * w).toFixed(2)}ml Insulina + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 U/kg/h.` }, obs: "Após hidratação inicial e expansão.", tabs: ["cad", "todos"] },
             { 
                 id: 52, 
-                name: "KCl 19,1% (Manutenção)", 
-                indication: "Correção de potássio", 
+                name: "KCl 19,1% (Correção na CAD)", 
+                indication: "Correção de potássio na Cetoacidose Diabética", 
                 pres: "2,5 mEq/ml", 
-                usage: "Conc. Máx 25 mEq/L | Vel. Máx 0,5 mEq/kg/h", 
-                defaultMgKg: 0.5, 
+                usage: "Conc. Máx 25 mEq/L | Vel. Máx 0,25 mEq/kg/h", 
+                defaultMgKg: 0.25, 
                 editable: false, 
                 route: "EV", 
                 doseML: (w) => "BIC", 
                 unitML: "ml/h", 
-                obsHighlight: "TETOS DE SEGURANÇA: Conc. Máx 25 mEq/L | Veloc. Máx 0,5 mEq/kg/h", 
+                obsHighlight: "TETOS DE SEGURANÇA: Conc. Máx 25 mEq/L | Veloc. Máx 0,25 mEq/kg/h", 
                 bic: { 
                     formula: (w) => `
                         <div class="space-y-1">
                             <p class="text-red-700 font-black"><strong>Concentração Máx (25 mEq/L):</strong></p>
                             <p>SF 0,9% 500ml + <strong>KCl 19,1% 5 ml</strong> (12.5 mEq no total)</p>
-                            <p class="text-red-700 mt-2 font-black"><strong>Velocidade Máx Infusão (0,5 mEq/kg/h):</strong></p>
-                            <p>Alvo: ${(w * 0.5).toFixed(1)} mEq/h ➔ <strong>Infundir a ${((w * 0.5) / (12.5 / 505)).toFixed(0)} ml/h</strong></p>
+                            <p class="text-red-700 mt-2 font-black"><strong>Velocidade Máx Infusão (0,25 mEq/kg/h):</strong></p>
+                            <p>Alvo: ${(w * 0.25).toFixed(2)} mEq/h ➔ <strong>Infundir a ${(((w * 0.25) / (12.5 / 505))).toFixed(0)} ml/h</strong></p>
                         </div>` 
                 }, 
-                tabs: ["todos"] 
+                tabs: ["cad", "todos"] 
             },
             { id: 53, name: "Naloxona", indication: "Reversão opioides", pres: "0,4 mg/ml", usage: "0,1 mg/kg", defaultMgKg: 0.1, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.1) * w / 0.4, 5).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.1) * w, 2).toFixed(1), unitMass: "mg", repeat: 2, maxDoses: 5, obs: "Teto: 2 mg.", tabs: ["antidotos", "todos"] },
             { id: 54, name: "Flumazenil", indication: "Reversão BZD", pres: "0,1 mg/ml", usage: "0,01 mg/kg", defaultMgKg: 0.01, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w / 0.1, 2).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w, 0.2).toFixed(2), unitMass: "mg", obs: "Teto: 0,2 mg. Evitar em uso crônico.", tabs: ["antidotos", "todos"] },
