@@ -162,7 +162,7 @@
             <div class="space-y-3">
                 <button onclick="applyShockFromModal()" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase shadow-xl active:scale-95 transition-all flex flex-col items-center">
                     <span>Choque Realizado</span>
-                    <span class="text-[9px] opacity-70 mt-1">Confirmar aplicação e iniciar RCP</span>
+                    <span class="text-[9px] opacity-70 mt-1">Confirmar aplicação e retomar RCP</span>
                 </button>
                 <button onclick="closeShockDoseModal()" class="w-full bg-slate-100 text-slate-500 py-3 rounded-2xl font-black uppercase active:scale-95 transition-all text-[10px]">Cancelar</button>
             </div>
@@ -238,11 +238,11 @@
             <div class="space-y-4">
                 <button onclick="processPulseCheck(true)" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
                     <span>Sim, tem Pulso</span>
-                    <span class="text-[9px] opacity-70 mt-1">Rosc / Estabilização</span>
+                    <span class="text-[9px] opacity-70 mt-1">ROSC / Estabilização</span>
                 </button>
                 <button onclick="processPulseCheck(false)" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
                     <span>Não tem Pulso</span>
-                    <span class="text-[9px] opacity-70 mt-1">Retomar RCP (Assist.)</span>
+                    <span class="text-[9px] opacity-70 mt-1">Retomar RCP (AESP / Assistolia)</span>
                 </button>
             </div>
         </div>
@@ -251,20 +251,16 @@
     <div id="pcr-rhythm-selection-modal" class="fixed inset-0 z-[120] bg-slate-900/80 backdrop-blur-md hidden flex items-center justify-center p-6">
         <div class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl text-center border-4 border-slate-100">
             <div class="text-5xl mb-4">⚡</div>
-            <h2 id="rhythm-modal-title" class="text-xl font-black text-slate-900 uppercase mb-2">Iniciar RCP</h2>
+            <h2 id="rhythm-modal-title" class="text-xl font-black text-slate-900 uppercase mb-2">Checar Ritmo</h2>
             <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">Selecione o ritmo identificado:</p>
             <div class="space-y-4">
                 <button onclick="confirmPcrStart('shockable')" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
                     <span>Ritmo Chocável</span>
-                    <span class="text-[9px] opacity-70 mt-1">FV / TV Sem Pulso</span>
+                    <span class="text-[9px] opacity-70 mt-1">FV / TV Sem Pulso (Vai para Choque)</span>
                 </button>
-                <button id="pcr-rhythm-btn-assistolia" onclick="confirmPcrStart('non-shockable')" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center hidden">
-                    <span>Assistolia</span>
-                    <span class="text-[9px] opacity-70 mt-1">Retomar RCP Imediatamente</span>
-                </button>
-                <button id="pcr-rhythm-btn-nonshock" onclick="confirmPcrStart('non-shockable')" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
-                    <span id="pcr-rhythm-btn-label">AESP</span>
-                    <span id="pcr-rhythm-btn-sublabel" class="text-[9px] opacity-70 mt-1">Ritmo Não Chocável</span>
+                <button onclick="confirmPcrStart('non-shockable')" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all flex flex-col items-center">
+                    <span>Ritmo Não Chocável</span>
+                    <span class="text-[9px] opacity-70 mt-1">AESP / Assistolia (Vai para Checagem de Pulso)</span>
                 </button>
             </div>
             <button onclick="closeRhythmSelection()" class="mt-6 text-[10px] font-black text-slate-400 uppercase underline decoration-2 underline-offset-4">Cancelar</button>
@@ -276,7 +272,7 @@
             <div class="text-5xl mb-4">🚨</div>
             <h2 class="text-2xl font-black text-red-600 uppercase mb-1 leading-none">Checar Ritmo</h2>
             <p class="text-[14px] font-black text-red-700 uppercase tracking-widest mb-2">⚠️ SUSPENDER RCP AGORA <br> 🔄️ Revezar socorristas</p>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 italic">Aguarde a checagem ou escolha o ritmo abaixo</p>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 italic">Aguarde a checagem ou clique abaixo</p>
             <div class="mb-6">
                 <div class="flex justify-between items-center mb-1">
                     <span class="text-[9px] font-black text-slate-500 uppercase">Janela de Checagem</span>
@@ -286,8 +282,8 @@
                     <div id="checking-progress-bar" class="h-full bg-red-500 transition-all duration-100 linear" style="width: 100%"></div>
                 </div>
             </div>
-            <button onclick="startNextPcrCycle()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all text-sm">
-                Escolher Ritmo / Retomar
+            <button onclick="openRhythmSelectionFromAlert()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all text-sm">
+                Escolher Ritmo / Checar
             </button>
         </div>
     </div>
@@ -354,7 +350,6 @@
         </div>
     </div>
 
-    <!-- Modal de Versões (Changelog) -->
     <div id="version-modal" class="fixed inset-0 z-[190] bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in duration-200">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -367,9 +362,7 @@
                 </button>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-6 space-y-4 bg-white no-scrollbar" id="version-list-container">
-                <!-- Preenchido via JS -->
-            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-4 bg-white no-scrollbar" id="version-list-container"></div>
 
             <div class="p-4 bg-slate-50 border-t border-slate-100 text-center">
                 <button onclick="closeVersionModal()" class="w-full bg-slate-900 text-white py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">
@@ -468,7 +461,7 @@
     </main>
 
     <footer class="bg-slate-100 text-slate-400 py-6 px-4 text-center border-t border-slate-200 mt-auto no-print">
-        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v2.2 (Clique p/ Versões)</p>
+        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v2.3 (Clique p/ Versões)</p>
         <p class="text-[9px] font-bold uppercase tracking-tighter opacity-70 italic">Apenas para referência. Conferir doses antes da administração.</p>
     </footer>
 
@@ -491,30 +484,32 @@
         // --- HISTÓRICO DE VERSÕES (CHANGELOG) ---
         const versionHistory = [
             {
+                version: "v2.3",
+                date: "02/09/2026 15:00",
+                changes: [
+                    "Ajuste na lógica de RCP: após o término de cada ciclo, o sistema aguarda a checagem de ritmo antes de direcionar para o choque (se chocável) ou para a checagem de pulso (se não chocável/AESP).",
+                    "Card de Causas Reversíveis (5Hs e 5Ts) programado para sugerir 10 segundos após o início do 2º ciclo."
+                ]
+            },
+            {
                 version: "v2.2",
                 date: "02/09/2026 14:40",
                 changes: [
-                    "Atualizada a fórmula da Insulina Regular (BIC) para o padrão de 50 UI em 500 ml de SF 0,9% (0,1 UI/ml), onde a velocidade em ml/h equivale exatamente ao peso da criança (ex: 14 kg = 14 ml/h para 0,1 U/kg/h).",
-                    "Mantidas todas as melhorias anteriores de segurança e tetos terapêuticos."
+                    "Padronização da Insulina Regular (BIC): 50 UI em 500 ml de SF 0,9% (0,1 UI/ml), onde a velocidade em ml/h equivale exatamente ao peso da criança."
                 ]
             },
             {
                 version: "v2.1",
                 date: "02/09/2026 12:30",
                 changes: [
-                    "Adicionada aba dedicada C.A.D. (Cetoacidose Diabética) contendo Insulina Regular (BIC) e KCl 19,1% (Correção).",
-                    "Atualizado card do KCl 19,1% para 'Correção na C.A.D.' com segurança reforçada: velocidade máxima de infusão ajustada para 0,25 mEq/kg/h.",
-                    "Integrado log automático detalhado com dose e massa total nas medicações."
+                    "Adicionada aba dedicada C.A.D. (Cetoacidose Diabética) contendo Insulina Regular (BIC) e KCl 19,1% (Correção com velocidade máxima de 0,25 mEq/kg/h)."
                 ]
             },
             {
                 version: "v2.0",
                 date: "02/09/2026 11:45",
                 changes: [
-                    "Adicionado log histórico de versões e atualizações clicável no rodapé.",
-                    "Implementada blindagem avançada anti-inspeção e bloqueio de atalhos de desenvolvedor.",
-                    "Correção do cálculo dinâmico de jatos de Salbutamol conforme faixa de peso (<20kg e >=20kg).",
-                    "Revisão científica rigorosa das doses pediátricas (AHA/SBP/Einstein) e tetos de segurança."
+                    "Adicionado log histórico de versões e blindagem avançada anti-inspeção."
                 ]
             },
             {
@@ -947,10 +942,10 @@
             
             let details = '';
             if (m.defaultMgKg !== undefined && m.editable) {
-                if (ms && ms !== "---") details = `${activeDose} ${m.doseUnit || 'mg/kg'} ➔ ${ms}${m.unitMass} (${ml}${m.unitML})`;
+                if (ms && ms !== "---") details = `${activeDose} ${m.doseUnit || 'mg/kg'} ➔ ${ms} ${m.unitMass} (${ml} ${m.unitML})`;
                 else details = `${activeDose} ${m.doseUnit || 'mg/kg'} ➔ ${ml} ${m.unitML}`;
             } else {
-                if (ms && ms !== "---") details = `${ms}${m.unitMass} (${ml}${m.unitML})`;
+                if (ms && ms !== "---") details = `${ms} ${m.unitMass} (${ml} ${m.unitML})`;
                 else details = `${ml} ${m.unitML}`;
             }
 
@@ -991,11 +986,8 @@
         function togglePcrStatus() {
             const time = getCurrentTime();
             if (!metronomeActive) {
-                pcrCycleCount = 1; htModalTriggeredInCycle2 = false; document.getElementById('rhythm-modal-title').innerText = "Iniciar RCP";
-                document.getElementById('pcr-rhythm-btn-assistolia').classList.add('hidden');
-                document.getElementById('pcr-rhythm-btn-label').innerText = "AESP"; 
-                document.getElementById('pcr-rhythm-btn-sublabel').innerText = "Ritmo Não Chocável";
-                document.getElementById('pcr-rhythm-btn-nonshock').onclick = () => confirmPcrStart('non-shockable'); 
+                pcrCycleCount = 1; htModalTriggeredInCycle2 = false; 
+                document.getElementById('rhythm-modal-title').innerText = "Iniciar RCP (1º Ciclo)";
                 document.getElementById('pcr-rhythm-selection-modal').classList.remove('hidden');
             } else {
                 metronomeActive = false; pcrShockTimerStart = null; pcrCycleAlertTriggered = false; pcrCheckingRhythm = false; pcrCycleCount = 1; pcrRhythmType = null;
@@ -1006,55 +998,78 @@
         }
 
         function closeRhythmSelection() { document.getElementById('pcr-rhythm-selection-modal').classList.add('hidden'); }
+        function openRhythmSelectionFromAlert() {
+            closePcrCycleAlert();
+            document.getElementById('rhythm-modal-title').innerText = `Checagem (Ciclo ${pcrCycleCount})`;
+            document.getElementById('pcr-rhythm-selection-modal').classList.remove('hidden');
+        }
 
         function confirmPcrStart(type) {
             const time = getCurrentTime();
-            if (type === 'organized') { 
-                closeRhythmSelection(); 
-                document.getElementById('pulse-check-modal').classList.remove('hidden'); 
-                return; 
-            }
+            closeRhythmSelection();
             if (type === 'shockable') {
                 const w = currentWeight;
                 const sc = pcrHistory.filter(h => h.type.includes('Choque')).length;
                 const dose = sc === 0 ? Math.min(w*2, 200) : Math.min(w*4, 360);
-                pcrHistory.unshift({ type: `Identificado Ritmo Chocável (FV/TVSP)`, time: time });
+                pcrHistory.unshift({ type: `Identificado Ritmo Chocável (FV/TV)`, time: time });
                 document.getElementById('shock-dose-value').innerText = dose;
                 document.getElementById('shock-dose-subtitle').innerText = `${sc + 1}º Choque sugerido`;
                 document.getElementById('shock-dose-modal').classList.remove('hidden');
-                closeRhythmSelection();
                 return;
             }
             if (type === 'non-shockable') {
-                pcrHistory.unshift({ type: `Identificado Ritmo Não Chocável (AESP/Ass.)`, time: time });
+                document.getElementById('pulse-check-modal').classList.remove('hidden');
+                return;
             }
-            pcrRhythmType = type; metronomeActive = true; pcrShockTimerStart = Date.now(); pcrCycleAlertTriggered = false; pcrCheckingRhythm = false; pcrShockAppliedInCycle = false;
-            if (!metronomeInterval) metronomeInterval = setInterval(playMetronomeTick, 545);
-            playMetronomeTick(); closeRhythmSelection();
-            if (pcrCycleCount === 1 && !pcrHistory.some(h => h.type === 'INÍCIO RCP')) { pcrHistory.unshift({ type: 'INÍCIO RCP', time: time }); }
-            saveToStorage(); render();
         }
 
         function applyShockFromModal() {
             const time = getCurrentTime();
             const sc = pcrHistory.filter(h => h.type.includes('Choque')).length + 1;
-            pcrHistory.unshift({ type: `${sc}º Choque`, time: time });
+            pcrHistory.unshift({ type: `${sc}º Choque Aplicado`, time: time });
             pcrShockAppliedInCycle = true;
             pcrRhythmType = 'shockable';
-            metronomeActive = true;
-            pcrShockTimerStart = Date.now();
-            pcrCycleAlertTriggered = false;
-            pcrCheckingRhythm = false;
-            if (!metronomeInterval) metronomeInterval = setInterval(playMetronomeTick, 545);
-            playMetronomeTick();
             closeShockDoseModal();
-            if (pcrCycleCount === 1 && !pcrHistory.some(h => h.type === 'INÍCIO RCP')) { pcrHistory.unshift({ type: 'INÍCIO RCP', time: time }); }
-            saveToStorage(); render();
+            startNewCycleAfterCheck('shockable');
         }
 
         function processPulseCheck(hasPulse) {
-            document.getElementById('pulse-check-modal').classList.add('hidden'); const time = getCurrentTime();
-            if (hasPulse) { pcrHistory.unshift({ type: 'ROSC / PULSO PRESENTE', time: time }); togglePcrStatus(); } else { pcrHistory.unshift({ type: 'Identificado AESP (Sem Pulso)', time: time }); confirmPcrStart('non-shockable'); }
+            document.getElementById('pulse-check-modal').classList.add('hidden'); 
+            const time = getCurrentTime();
+            if (hasPulse) { 
+                pcrHistory.unshift({ type: 'ROSC / PULSO PRESENTE', time: time }); 
+                togglePcrStatus(); 
+            } else { 
+                pcrHistory.unshift({ type: 'Identificado AESP/Assistolia (Sem Pulso - Retomando RCP)', time: time }); 
+                startNewCycleAfterCheck('non-shockable');
+            }
+        }
+
+        function startNewCycleAfterCheck(rhythmType) {
+            pcrRhythmType = rhythmType; 
+            metronomeActive = true; 
+            pcrShockTimerStart = Date.now(); 
+            pcrCycleAlertTriggered = false; 
+            pcrCheckingRhythm = false; 
+            pcrShockAppliedInCycle = false;
+            pcrCycleCount++;
+            
+            if (!metronomeInterval) metronomeInterval = setInterval(playMetronomeTick, 545);
+            playMetronomeTick();
+            
+            if (pcrCycleCount === 2 && !htModalTriggeredInCycle2) {
+                setTimeout(() => {
+                    if (pcrCycleCount === 2 && !htModalTriggeredInCycle2 && metronomeActive) {
+                        openHTModal();
+                        htModalTriggeredInCycle2 = true;
+                    }
+                }, 10000);
+            }
+
+            if (!pcrHistory.some(h => h.type === 'INÍCIO RCP')) { 
+                pcrHistory.unshift({ type: 'INÍCIO RCP', time: getCurrentTime() }); 
+            }
+            saveToStorage(); render();
         }
 
         function playMetronomeTick() { 
@@ -1085,17 +1100,6 @@
         function showPcrCycleAlert() { pcrCheckingRhythm = true; checkingStartTime = Date.now(); document.getElementById('pcr-cycle-alert-modal').classList.remove('hidden'); }
         function closePcrCycleAlert() { pcrCheckingRhythm = false; checkingStartTime = null; document.getElementById('pcr-cycle-alert-modal').classList.add('hidden'); }
         
-        function startNextPcrCycle() { 
-            closePcrCycleAlert(); pcrCycleCount++; pcrRhythmType = null; pcrShockAppliedInCycle = false; 
-            document.getElementById('rhythm-modal-title').innerText = `Ciclo ${pcrCycleCount}`;
-            document.getElementById('pcr-rhythm-btn-assistolia').classList.remove('hidden');
-            document.getElementById('pcr-rhythm-btn-label').innerText = "Ritmo Organizado"; 
-            document.getElementById('pcr-rhythm-btn-sublabel').innerText = "Checar Pulso";
-            document.getElementById('pcr-rhythm-btn-nonshock').onclick = () => confirmPcrStart('organized'); 
-            document.getElementById('pcr-rhythm-selection-modal').classList.remove('hidden'); 
-            saveToStorage(); render(); 
-        }
-
         function dismissAlert(id) { if (timers[id]) { timers[id].dismissed = true; hideAlert(); saveToStorage(); render(); updateActivityMonitor(); } }
         function hideAlert() { const b = document.getElementById('global-alert-container'); b.classList.add('opacity-0', 'scale-95', 'invisible'); b.classList.remove('opacity-100', 'scale-100'); }
         function goToMed(id) { const m = medData.find(x => x.id === id); if (!m) return; expandedMeds[id] = true; const t = m.tabs.includes(currentTab) ? currentTab : m.tabs[0]; setTab(t); setTimeout(() => { const c = document.getElementById(`med-${id}`); if (c) { window.scrollTo({ top: c.offsetTop - (document.getElementById('app-header').offsetHeight + 120), behavior: 'smooth' }); c.classList.add('ring-4', 'ring-blue-500/30'); setTimeout(() => c.classList.remove('ring-4', 'ring-blue-500/30'), 2000); } }, 100); }
@@ -1282,9 +1286,6 @@
                     else needsMonitorRebuild = true;
                 }
 
-                if (pcrCycleCount === 2 && rem <= 60000 && !htModalTriggeredInCycle2) { 
-                    openHTModal(); htModalTriggeredInCycle2 = true; 
-                } 
                 if (rem === 0 && !pcrCycleAlertTriggered) { 
                     showPcrCycleAlert(); pcrCycleAlertTriggered = true; 
                 } 
@@ -1294,7 +1295,7 @@
                 document.getElementById('checking-progress-bar')?.style.setProperty('width', `${(rem/10000)*100}%`);
                 const cd = document.getElementById('checking-countdown');
                 if (cd) cd.innerText = `${Math.ceil(rem/1000)}s`; 
-                if (rem === 0) startNextPcrCycle(); 
+                if (rem === 0) openRhythmSelectionFromAlert(); 
             }
 
             Object.keys(timers).forEach(id => { 
