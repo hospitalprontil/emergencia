@@ -76,6 +76,23 @@
             transform: translateY(-1px);
         }
 
+        .hidden { display: none !important; }
+
+        #tab-strip {
+            position: sticky;
+            z-index: 40;
+            background: #f8fafc;
+        }
+
+        #tabs-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            align-items: center;
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+
         #content { transition: opacity 0.2s ease-in-out; }
 
         .watermark {
@@ -136,7 +153,7 @@
             </div>
             <div class="space-y-3">
                 <button onclick="confirmPushDose()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Sim, Diluição Realizada</button>
-                <button onclick="document.getElementById('push-dose-confirm-modal').classList.add('hidden')" class="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase active:scale-95 transition-all">Cancelar</button>
+                <button onclick="hideModal('push-dose-confirm-modal')" class="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black uppercase active:scale-95 transition-all">Cancelar</button>
             </div>
         </div>
     </div>
@@ -144,9 +161,12 @@
     <div id="tsv-safety-modal" class="fixed inset-0 z-[180] bg-red-950/90 backdrop-blur-md hidden flex items-center justify-center p-6">
         <div class="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border-4 border-red-600 text-center animate-in zoom-in duration-300">
             <div class="text-6xl mb-4">🛑</div>
-            <h2 class="text-xl font-black text-red-600 uppercase mb-2 leading-tight">Ação Bloqueada</h2>
-            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6 leading-relaxed">Você deve <strong class="text-red-600">Sedar o paciente</strong> e <strong class="text-red-600">Ligar o Sync</strong> do desfibrilador antes de aplicar o choque de cardioversão.</p>
-            <button onclick="document.getElementById('tsv-safety-modal').classList.add('hidden')" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Entendido</button>
+            <h2 id="tsv-safety-title" class="text-xl font-black text-red-600 uppercase mb-2 leading-tight">Ação Bloqueada</h2>
+            <p id="tsv-safety-text" class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6 leading-relaxed">Ligue o Sync do desfibrilador antes do choque.</p>
+            <div class="space-y-3">
+                <button id="tsv-safety-proceed" onclick="confirmTsvShockAnyway()" class="hidden w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Cardioverter sem sedar</button>
+                <button onclick="hideModal('tsv-safety-modal')" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all">Entendido</button>
+            </div>
         </div>
     </div>
 
@@ -406,19 +426,23 @@
                 <div class="bg-blue-900/50 p-1.5 rounded-2xl border border-blue-400/20 flex items-center gap-2">
                     <button onclick="updateAge(-1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">-</button>
                     <div class="flex flex-col items-center px-1">
-                        <span class="text-[8px] uppercase font-bold opacity-60 leading-none mb-1">Anos</span>
-                        <input type="number" id="ageInput" value="3" class="w-8 text-center bg-transparent text-sm font-black focus:outline-none" oninput="handleAgeInput()">
+                        <span id="ageUnitLabel" class="text-[8px] uppercase font-bold opacity-60 leading-none mb-1">Anos</span>
+                        <input type="text" inputmode="numeric" id="ageInput" value="3" maxlength="3" class="w-9 text-center bg-transparent text-sm font-black focus:outline-none" oninput="handleAgeInput()" onblur="writePatientInputs()">
                     </div>
                     <button onclick="updateAge(1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">+</button>
                 </div>
-                <div class="bg-blue-600 p-1.5 rounded-2xl shadow-lg flex items-center gap-2 ring-2 ring-white/20">
-                    <button onclick="updateWeight(-1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">-</button>
+                <div id="weightBox" class="bg-blue-600 p-1.5 rounded-2xl shadow-lg flex items-center gap-2 ring-2 ring-white/20">
+                    <button data-weight-step="-1" onclick="updateWeight(-1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">-</button>
                     <div class="flex flex-col items-center px-1">
-                        <span class="text-[8px] uppercase font-bold opacity-80 leading-none mb-1">Peso kg</span>
+                        <span id="weightLabel" class="text-[8px] uppercase font-bold opacity-80 leading-none mb-1">Peso est.</span>
                         <input type="number" id="weightInput" value="14" class="w-10 text-center bg-transparent text-lg font-black focus:outline-none" oninput="handleWeightInput()">
                     </div>
-                    <button onclick="updateWeight(1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">+</button>
+                    <button data-weight-step="1" onclick="updateWeight(1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">+</button>
                 </div>
+                <label class="bg-blue-900/50 px-2.5 py-1.5 rounded-2xl border border-blue-400/20 flex items-center gap-1.5 cursor-pointer select-none" title="RN: 3,5 kg. De 1 a 11 meses: (0,5 × meses) + 4. De 1 a 5 anos: (2 × idade) + 8. De 6 a 12 anos: (3 × idade) + 7. Desmarque se o peso for conhecido.">
+                    <input type="checkbox" id="estimateWeight" checked onchange="toggleEstimateWeight(this.checked)" class="w-3.5 h-3.5 accent-white">
+                    <span class="text-[8px] uppercase font-black leading-tight">Estimar<br>peso</span>
+                </label>
                 <button onclick="openHistory()" class="w-11 h-11 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg border border-white/20 active:scale-90 transition-transform">
                     <span class="text-xl">📋</span>
                 </button>
@@ -431,7 +455,7 @@
         <section class="bg-white p-3 rounded-[2rem] card-shadow border border-slate-100 grid grid-cols-3 gap-2">
             <div class="col-span-3 pb-1 border-b border-slate-50 flex justify-between items-center">
                 <span id="vitalLabel" class="text-[10px] font-black text-blue-600 uppercase tracking-widest">---</span>
-                <span class="text-[10px] font-bold text-slate-300 italic text-right">REF: PALS/SBP/EINSTEIN</span>
+                <span class="text-[10px] font-bold text-slate-300 italic text-right">REF: PALS 2025 / SBP / EINSTEIN</span>
             </div>
             <div class="text-center">
                 <p class="text-[8px] uppercase text-slate-400 font-bold">FC (bpm)</p>
@@ -452,7 +476,7 @@
             <div id="active-meds-list" class="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2"></div>
         </section>
 
-        <div class="sticky z-40 bg-slate-50 pb-2 -mx-4 px-4 shadow-sm sm:shadow-none" style="top: var(--header-height, 75px);">
+        <div id="tab-strip" class="sticky z-40 bg-slate-50 pb-2 -mx-4 px-4 shadow-sm sm:shadow-none" style="top: var(--header-height, 75px);">
             <div class="flex gap-2 overflow-x-auto no-scrollbar py-2 items-center" id="tabs-container"></div>
         </div>
 
@@ -461,7 +485,7 @@
     </main>
 
     <footer class="bg-slate-100 text-slate-400 py-6 px-4 text-center border-t border-slate-200 mt-auto no-print">
-        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v2.3 (Clique p/ Versões)</p>
+        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v3.0 (Clique p/ Versões)</p>
         <p class="text-[9px] font-bold uppercase tracking-tighter opacity-70 italic">Apenas para referência. Conferir doses antes da administração.</p>
     </footer>
 
@@ -483,6 +507,77 @@
 
         // --- HISTÓRICO DE VERSÕES (CHANGELOG) ---
         const versionHistory = [
+            {
+                version: "v3.0",
+                date: "01/10/2026",
+                changes: [
+                    "Versão liberada para uso.",
+                    "Convulsão e anafilaxia ganharam a ordem do atendimento no topo da aba. Saiu o levetiracetam.",
+                    "No RN, a aba Choque sugere sepse sem meningite (ampicilina + gentamicina) e com meningite (ampicilina + cefotaxima). Ceftriaxona não entra.",
+                    "Adrenalina push-dose saiu da PCR. Fica em choque e anafilaxia, com aviso de que não é a dose da parada.",
+                    "CAD: se K < 3,3, não ligar a bomba de insulina, ou pausar, e repor potássio antes."
+                ]
+            },
+            {
+                version: "v2.10",
+                date: "01/10/2026",
+                changes: [
+                    "Abaixo de 1 ano a idade passa para meses: no 1 ano, a seta de menos vai a 11 meses e desce até RN. RN estima 3,5 kg. De 1 a 11 meses: (0,5 × meses) + 4."
+                ]
+            },
+            {
+                version: "v2.9",
+                date: "01/10/2026",
+                changes: [
+                    "Estimar peso vem marcado. Menor de 1 ano: (0,5 × meses) + 4. De 1 a 5 anos: (2 × idade) + 8. De 6 a 12 anos: (3 × idade) + 7. Desmarcado, idade e peso ficam independentes.",
+                    "Sinais vitais nas faixas do PALS: FC acordado, FR e PAS mínima (hipotensão abaixo desse valor).",
+                    "Tubo arredondado de 0,5 em 0,5 mm. Fixação = número do tubo com cuff × 3 (no recém-nascido, peso + 6)."
+                ]
+            },
+            {
+                version: "v2.8",
+                date: "01/10/2026",
+                changes: [
+                    "Com choque, NaCl 0,9% a 50 ml/kg/h (teto 1.000 ml/h), até a estabilidade. O fluxograma escreve 50 ml/kg; o texto do livro define essa velocidade por hora."
+                ]
+            },
+            {
+                version: "v2.7",
+                date: "01/10/2026",
+                changes: [
+                    "C.A.D. só com insulina regular em bomba. Saiu o esquema subcutâneo e qualquer menção a ele.",
+                    "Potássio voltou à reposição original do serviço, só com KCl 19,1%: 5 ml em 500 ml (25 mEq/L) e no máximo 0,25 mEq/kg/h. Sem fosfato. A Tabela 50.6 fica como ressalva de quando começar e do que ela permitiria a mais."
+                ]
+            },
+            {
+                version: "v2.6",
+                date: "01/10/2026",
+                changes: [
+                    "CAD, fluido corrigido pela figura 50.2: com choque, volume de 50 ml/kg (velocidade máxima 1.000 ml/h) até estabilizar. Sem choque, 20 ml/kg/h (teto 1.000 ml/h), mantendo o volume EV por volta de 4 h. A v2.5 tinha esses dois invertidos.",
+                    "Potássio pela Tabela 50.6: K < 6,5 com diurese, 30–40 mEq/L a 0,5 mEq/kg/h a partir da 2ª hora, metade KCl 19,1% e metade KHPO₄ a 25% (1 ml = 1,8 mEq). K > 6,5: só NaCl 0,9% na 2ª hora até novo K. K ≤ 3,5: até 1 mEq/kg/h, monitorado, sem passar de 70 mEq/L.",
+                    "Insulina subcutânea: 0,15 UI/kg a cada 2 h para queda de 100 mg/dL/h. Se a queda passar do ideal, 0,1 UI/kg a cada 2 h."
+                ]
+            },
+            {
+                version: "v2.5",
+                date: "01/10/2026",
+                changes: [
+                    "C.A.D. pelo fluxograma do serviço: confirmar glicemia > 200, pH < 7,30, bicarbonato < 15 e cetona. Soro só NaCl 0,9%. Choque: 20 mL/kg/h (teto 1.000 mL/h), em geral por cerca de 4 h. Sem choque: 50 mL/kg, teto 1.000 mL/h, até estabilidade. Depois, se precisar, 10 mL/kg/h. Se a glicemia cair abaixo de 200 na expansão, soro glicosado ao meio.",
+                    "Insulina na bomba voltou a 50 UI em 500 ml. A velocidade em ml/h é o peso e equivale a 0,1 UI/kg/h. Metade do peso é 0,05 UI/kg/h. Entre 200 e 250 mg/dL, reduzir pela metade ou passar ao subcutâneo."
+                ]
+            },
+            {
+                version: "v2.4",
+                date: "30/09/2026",
+                changes: [
+                    "PCR no PALS/AHA 2025: adrenalina no ritmo chocável só após o 2º choque; amiodarona OU lidocaína após o 3º; energia 2, depois 4 J/kg, subindo até 10 J/kg (teto 200 J). O 1º ciclo não pula mais para o 2º. Choque não reinicia a RCP no meio da compressão. Pulso presente antes de iniciar não reabre o protocolo.",
+                    "Noradrenalina em base (1 mg/ml). A ampola rotulada hemitartarato 2 mg/ml não deve ser calculada como 2 mg/ml.",
+                    "Amiodarona na TSV passou a infusão de 20-60 min. Cardioversão 1 J/kg e depois 2 J/kg, com o joule real no histórico. Sync obrigatório; sedação não atrasa o paciente instável.",
+                    "C.A.D. no pathway do Einstein: insulina 100 UI em 100 ml (0,1 × peso ml/h) e potássio conforme o K sérico. Insulina não inicia se K < 3,5.",
+                    "Atropina de bradicardia com teto de 0,5 mg. Organofosforado ganhou card próprio, sem esse teto. Adrenalina IM: 0,3 mg abaixo de 12 anos e 0,5 mg no adolescente.",
+                    "Dexametasona saiu do TCE. Entraram NaCl 3%, midazolam em bolus, levetiracetam e salbutamol nebulizado. Avisos de bicarbonato, cálcio, magnésio, glicose no lactente e cristaloide."
+                ]
+            },
             {
                 version: "v2.3",
                 date: "02/09/2026 15:00",
@@ -534,12 +629,12 @@
                     </ul>
                 </div>
             `).join('');
-            document.getElementById('version-modal').classList.remove('hidden');
+            showModal('version-modal');
         }
 
         function closeVersionModal() {
             document.getElementById('version-list-container').innerHTML = '';
-            document.getElementById('version-modal').classList.add('hidden');
+            hideModal('version-modal');
         }
 
         const tabsOrder = [
@@ -573,10 +668,29 @@
         let checkingStartTime = null; 
         let htModalTriggeredInCycle2 = false; 
         let tsvHistory = { shock1: { sedated: false, synced: false, history: [] }, shock2: { sedated: false, synced: false, history: [] } };
+        let pendingTsvShock = null;
         let patientInfo = { name: '', dob: '' };
         
         let currentAge = 3;
         let currentWeight = 14;
+        let estimateWeight = true;
+
+        function estimateWeightFromAge(age) {
+            const a = Math.max(0, Math.min(Number(age) || 0, 18));
+            if (a < 1) {
+                const months = Math.max(0, Math.min(11, Math.round(a * 12)));
+                if (months === 0) return 3.5;
+                return Math.round(((0.5 * months) + 4) * 10) / 10;
+            }
+            if (a <= 5) return Math.round((2 * a) + 8);
+            return Math.min(70, Math.round((3 * a) + 7));
+        }
+
+        function formatAgeField() {
+            if (!(currentAge < 1)) return String(Math.min(18, Math.max(1, Math.round(currentAge))));
+            const months = Math.max(0, Math.min(11, Math.round(currentAge * 12)));
+            return months === 0 ? 'RN' : String(months);
+        }
 
         let metronomeActive = false;
         let metronomeSoundEnabled = true; 
@@ -593,51 +707,84 @@
         const getCurrentTime = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
         const getVitals = (w, age) => {
-            if (age < 1) return { label: 'Lactente', fc: '110-160', fr: '30-40', pas: 70 };
-            if (age < 2) return { label: '1 a 2 anos', fc: '100-150', fr: '25-35', pas: 70 + (2 * age) };
-            if (age < 5) return { label: 'Pré-escolar', fc: '95-140', fr: '25-30', pas: 70 + (2 * age) };
-            if (age < 12) return { label: 'Escolar', fc: '80-120', fr: '20-25', pas: 70 + (2 * age) };
-            return { label: 'Adolescente', fc: '60-100', fr: '15-20', pas: 90 };
+            const pasChild = Math.round(70 + (2 * age));
+            if (age < 1 && w <= 4) return { label: 'Recém-nascido', fc: '100-205', fr: '30-60', pas: 60 };
+            if (age < 1) return { label: 'Lactente', fc: '100-180', fr: '30-53', pas: 70 };
+            if (age < 3) return { label: '1 a 3 anos', fc: '98-140', fr: '22-37', pas: pasChild };
+            if (age < 6) return { label: 'Pré-escolar', fc: '80-120', fr: '20-28', pas: pasChild };
+            if (age <= 10) return { label: 'Escolar', fc: '75-118', fr: '18-25', pas: pasChild };
+            if (age < 12) return { label: 'Escolar', fc: '75-118', fr: '18-25', pas: 90 };
+            return { label: 'Adolescente', fc: '60-100', fr: '12-20', pas: 90 };
         };
 
+        function pcrShockCount() {
+            return pcrHistory.filter(h => h && typeof h.type === 'string' && h.type.includes('Choque Aplicado')).length;
+        }
+
+        function pcrShockEnergy(w, prior) {
+            const cap = Math.min(Math.round(w * 10), 200);
+            let perKg = 2;
+            if (prior === 1) perKg = 4;
+            else if (prior >= 2) perKg = Math.min(10, 4 + (prior - 1) * 2);
+            return Math.max(1, Math.min(cap, Math.round(w * perKg)));
+        }
+
+        function tsvJoules(w, which) {
+            return which === 1 ? Math.max(1, Math.round(w * 1)) : Math.max(2, Math.round(w * 2));
+        }
+
+        function medMaxDoses(m) {
+            if (!m) return 1;
+            if (m.unlimited) return null;
+            if (m.maxDoses) return m.maxDoses;
+            if (m.repeat) return null;
+            return 1;
+        }
+
         const getEq = (w, a) => {
-            const uncuffed = a < 1 ? (w < 3 ? 3.0 : 3.5) : (a / 4) + 4;
-            const cuffed = a < 1 ? (w < 3 ? 3.0 : 3.0) : (a / 4) + 3.5;
+            const half = (n) => (Math.round(n * 2) / 2);
+            let uncuffed, cuffed;
+            if (a >= 1) { uncuffed = half((a / 4) + 4); cuffed = half((a / 4) + 3.5); }
+            else if (w < 2) { uncuffed = 2.5; cuffed = 2.5; }
+            else if (w < 3) { uncuffed = 3.0; cuffed = 3.0; }
+            else if (w < 6) { uncuffed = 3.5; cuffed = 3.0; }
+            else { uncuffed = 4.0; cuffed = 3.5; }
             let lma = 1; if(w>=5) lma=1.5; if(w>=10) lma=2; if(w>=20) lma=2.5; if(w>=30) lma=3; if(w>=50) lma=4; if(w>=70) lma=5;
-            let foley = a < 1 ? '6-8' : (a < 3 ? '8-10' : (a < 5 ? '10' : '10-12'));
-            let blade = a < 1 ? 'Reta 1' : (a < 8 ? 'Curva 2' : 'Curva 3');
+            let foley = a < 1 ? '6-8' : (a < 3 ? '8-10' : (a < 12 ? '10-12' : '12-14'));
+            let blade = a < 2 ? (w < 3 ? 'Reta 0' : 'Reta 1') : (a < 8 ? 'Curva 2' : 'Curva 3');
+            const fix = (a < 1 && w <= 4) ? (w + 6) : (cuffed * 3);
             return {
                 semCuff: uncuffed.toFixed(1),
                 comCuff: cuffed.toFixed(1),
-                fix: (cuffed * 3).toFixed(1),
+                fix: fix.toFixed(1),
                 blade: blade,
                 mask: lma,
-                guedel: a < 1 ? '0 / 1' : (a < 5 ? '2' : '3'),
+                guedel: a < 1 ? '0 / 1' : (a < 5 ? '2' : (a < 12 ? '3' : '4')),
                 probe: foley
             };
         };
 
         const medData = [
-            { id: 8, name: "Cristalóide (Expansão)", indication: "Choque hipovolêmico / Distributivo", pres: "SF 0,9% ou Ringer", usage: "20 ml/kg", defaultMgKg: 20, doseUnit: "ml/kg", unitDisplay: "ml/kg", isVol: true, editable: true, route: "EV / IO", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w, 1000).toFixed(0), unitML: "ml", repeat: 20, maxDoses: 3, tabs: ["choque", "anafilaxia", "todos"], obs: "Repetir até 40-60 ml/kg na 1ª hora. Teto 1000ml por expansão." },
-            { id: 1, name: "Adrenalina (PCR)", indication: "Parada Cardiorrespiratória", pres: "1:10.000 (0,1 mg/ml)", usage: "0,01 mg/kg", defaultMgKg: 0.01, doseUnit: "mg/kg", editable: false, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * 10 * w, 10).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w, 1.0).toFixed(2), unitMass: "mg", obs: "A cada 3-5 minutos (Teto: 1mg).", repeat: 3, tabs: ["pcr", "todos"] },
-            { id: 2, name: "Adrenalina IM (Anafilaxia)", indication: "Anafilaxia", pres: "1 mg/ml (pura)", usage: "0,01 mg/kg", defaultMgKg: 0.01, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "IM (vasto lateral)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w, 0.5).toFixed(2), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w, 0.5).toFixed(2), unitMass: "mg", repeat: 5, maxDoses: 3, obs: "USO PURO. Teto: 0,5 mg IM.", tabs: ["anafilaxia", "todos"] },
-            { id: 3, name: "Adrenalina (Push Dose)", indication: "Hipotensão aguda / Pré-intubação", pres: "10 mcg/ml (diluição)", usage: "1 mcg/kg", defaultMgKg: 1, doseUnit: "mcg/kg", unitDisplay: "mcg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => ((ov !== undefined ? ov : 1) * 0.1 * w).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 1) * w).toFixed(0), unitMass: "mcg", obsHighlight: "PREPARO: 1 amp (1ml) Adrenalina + 100ml SF 0,9%", obs: "Bolus lento 1-2 min.", repeat: 2, maxDoses: 20, tabs: ["pcr", "choque", "todos"] },
-            { id: 4, name: "Adrenalina (BIC)", indication: "Choque refratário", pres: "1 mg/ml", usage: "0,1 - 1 mcg/kg/min", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.3 * w).toFixed(2)}ml Adrena + SF 0,9% qsp 50ml.<br>1ml/h = ${ov !== undefined ? ov : 0.1} mcg/kg/min.` }, obs: "Via exclusiva.", tabs: ["choque", "todos"] },
-            { id: 5, name: "Noradrenalina (BIC)", indication: "Choque séptico vasoplégico", pres: "2 mg/ml", usage: "0,1 - 2 mcg/kg/min", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.3 * w / 2).toFixed(2)}ml Nora + SG 5% qsp 50ml.<br>1ml/h = ${ov !== undefined ? ov : 0.1} mcg/kg/min.` }, obs: "Via exclusiva.", tabs: ["choque", "todos"] },
-            { id: 6, name: "Dopamina (BIC)", indication: "Choque", pres: "5 mg/ml", usage: "5 - 20 mcg/kg/min", defaultMgKg: 5, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${((3 * w) / 5).toFixed(2)}ml Dopamina + SF 0,9% qsp 50ml.<br> 1ml/h = 1 mcg/kg/min.` }, obs: "Via exclusiva.", tabs: ["choque", "todos"] },
+            { id: 8, name: "Cristalóide (Expansão)", indication: "Choque hipovolêmico / Distributivo", pres: "SF 0,9% ou Ringer", usage: "10-20 ml/kg", defaultMgKg: 20, doseUnit: "ml/kg", unitDisplay: "ml/kg", isVol: true, editable: true, unlimited: true, route: "EV / IO", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w, 1000).toFixed(0), unitML: "ml", tabs: ["choque", "anafilaxia", "todos"], obsHighlight: "Cardiogênico: 5-10 ml/kg. Não usar 20 ml/kg às cegas.", obs: "Reavaliar perfusão, fígado e pulmão a cada alíquota. Sepse: parar se sobrecarga; vasoativo se ainda em choque depois de 40-60 ml/kg. Hemorragia pode precisar de mais, sem espera de 20 min. Teto 1000 ml por alíquota. Se for Ringer, não usar a mesma linha da ceftriaxona." },
+            { id: 1, name: "Adrenalina (PCR)", indication: "Parada Cardiorrespiratória", pres: "1:10.000 (0,1 mg/ml)", usage: "0,01 mg/kg", defaultMgKg: 0.01, doseUnit: "mg/kg", editable: false, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * 10 * w, 10).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w, 1.0).toFixed(2), unitMass: "mg", obs: "A cada 3-5 min. Teto 1 mg. Sem EV/IO: pelo tubo, 0,1 mg/kg da solução 1 mg/ml (0,1 ml/kg), teto 2,5 mg.", repeat: 3, tabs: ["pcr", "todos"] },
+            { id: 2, name: "Adrenalina IM (Anafilaxia)", indication: "Anafilaxia", pres: "1 mg/ml (pura)", usage: "0,01 mg/kg", defaultMgKg: 0.01, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "IM (vasto lateral)", doseML: (w, a, c, ov) => { const maxMg = a >= 12 ? 0.5 : 0.3; return Math.min((ov !== undefined ? ov : 0.01) * w, maxMg).toFixed(2); }, unitML: "ml", doseMass: (w, a, c, ov) => { const maxMg = a >= 12 ? 0.5 : 0.3; return Math.min((ov !== undefined ? ov : 0.01) * w, maxMg).toFixed(2); }, unitMass: "mg", repeat: 5, maxDoses: 5, obs: "USO PURO. Teto 0,3 mg abaixo de 12 anos e 0,5 mg no adolescente. Repetir a cada 5-15 min. Sem melhora após 3 doses IM, passar para a BIC.", tabs: ["anafilaxia", "todos"] },
+            { id: 3, name: "Adrenalina (Push Dose)", indication: "Hipotensão com pulso / Pré-intubação", pres: "10 mcg/ml (diluição)", usage: "1 mcg/kg", defaultMgKg: 1, doseUnit: "mcg/kg", unitDisplay: "mcg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => ((ov !== undefined ? ov : 1) * 0.1 * w).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 1) * w).toFixed(0), unitMass: "mcg", obsHighlight: "NÃO é a adrenalina da PCR. Na parada a dose é 0,01 mg/kg. PREPARO: 1 amp (1 ml) + 100 ml SF 0,9% = 10 mcg/ml.", obs: "Só com pulso. 1 mcg/kg (faixa 0,5–2). Bolus lento em 1–2 min. É ponte até a BIC, não substitui a infusão.", repeat: 2, maxDoses: 20, tabs: ["choque", "anafilaxia", "todos"] },
+            { id: 4, name: "Adrenalina (BIC)", indication: "Choque refratário", pres: "1 mg/ml", usage: "0,1 - 1 mcg/kg/min", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.3 * w).toFixed(2)}ml Adrena + SF 0,9% qsp 50ml.<br>1ml/h = ${ov !== undefined ? ov : 0.1} mcg/kg/min.` }, obs: "Via exclusiva.", tabs: ["choque", "anafilaxia", "todos"] },
+            { id: 5, name: "Noradrenalina (BIC)", indication: "Choque séptico vasoplégico", pres: "1 mg/ml de base", usage: "0,05 - 2 mcg/kg/min", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Dose sempre em NORADRENALINA BASE.<br>A ampola rotulada hemitartarato 2 mg/ml (8 mg/4 ml) tem <strong>1 mg/ml de base</strong>. Não dobre o volume.<br>Diluir <strong>${(0.3 * w).toFixed(2)} ml</strong> de base + SG 5% qsp 50 ml.<br>1 ml/h = 0,1 mcg/kg/min. Início habitual: <strong>0,5 ml/h</strong> (0,05 mcg/kg/min).` }, obsHighlight: "Rótulo 2 mg/ml de hemitartarato = 1 mg/ml de base.", obs: "Via exclusiva, de preferência central. Preferir adrenalina ou noradrenalina. Dopamina não é primeira linha.", tabs: ["choque", "todos"] },
+            { id: 6, name: "Dopamina (BIC)", indication: "Choque", pres: "5 mg/ml", usage: "5 - 20 mcg/kg/min", defaultMgKg: 5, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${((3 * w) / 5).toFixed(2)}ml Dopamina + SF 0,9% qsp 50ml.<br> 1ml/h = 1 mcg/kg/min.` }, obs: "Via exclusiva. Não é primeira linha no choque séptico: preferir adrenalina ou noradrenalina.", tabs: ["choque", "todos"] },
             { id: 7, name: "Dobutamina (BIC)", indication: "Choque cardiogênico", pres: "12,5 mg/ml", usage: "5 - 20 mcg/kg/min", defaultMgKg: 5, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${((3 * w) / 12.5).toFixed(2)}ml Dobuta + SF 0,9% qsp 50ml.<br> 1ml/h = 1 mcg/kg/min.` }, obs: "Via exclusiva.", tabs: ["choque", "todos"] },
-            { id: 10, name: "Ceftriaxona (Rocefin)", indication: "Sepse / Meningite bacteriana", pres: "100 mg/ml (diluído)", usage: "100 mg/kg", defaultMgKg: 100, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 100) * w / 100, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 100) * w, 2000).toFixed(0), unitMass: "mg", obs: "Teto: 2 g. Infundir em 30 min. Não misturar c/ cálcio.", tabs: ["choque", "todos"] },
+            { id: 10, name: "Ceftriaxona (Rocefin)", indication: "Sepse / Meningite bacteriana", pres: "100 mg/ml (diluído)", usage: "100 mg/kg", defaultMgKg: 100, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 100) * w / 100, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 100) * w, 2000).toFixed(0), unitMass: "mg", obsHighlight: "Sepse sem meningite: 100 mg/kg 1x/dia (teto 2 g). Meningite: ajustar para 50 mg/kg de 12/12 h (teto 2 g/dose, 4 g/dia). RN: NÃO usar. Desloca bilirrubina e não pode com cálcio.", obs: "Infundir em 30 min. O volume é o da solução a 100 mg/ml — diluir antes de correr. Não misturar com cálcio nem na mesma linha do Ringer. No recém-nascido, usar ampicilina + gentamicina, ou ampicilina + cefotaxima se houver meningite.", tabs: ["choque", "todos"] },
             { id: 13, name: "Vancomicina", indication: "Sepse (suspeita MRSA)", pres: "Reconstituído 50 mg/ml", usage: "15 mg/kg", defaultMgKg: 15, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV (lento)", doseML: (w, a, c, ov) => Math.min(((ov !== undefined ? ov : 15) * w) / 50, 20).toFixed(1), unitML: "ml (ampola)", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 15) * w, 1000).toFixed(0), unitMass: "mg", obs: "Teto: 1 g. Diluir p/ 5 mg/ml em SF. Correr em >60 min.", tabs: ["choque", "todos"] },
             { id: 17, name: "Hidrocortisona", indication: "Choque séptico refratário", pres: "100 mg ou 500 mg", usage: "2 mg/kg ataque", defaultMgKg: 2, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: "---", unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 2) * w, 100).toFixed(0), unitMass: "mg", obs: "Teto: 100 mg. Manutenção: 1-2 mg/kg 6/6h.", tabs: ["choque", "todos"] },
-            { id: 19, name: "Bicarbonato de Sódio 8,4%", indication: "Acidose grave / Hipercalemia", pres: "1 mEq/ml", usage: "1 mEq/kg", defaultMgKg: 1, doseUnit: "mEq/kg", unitDisplay: "mEq/kg", editable: true, isMass: true, route: "EV / IO (lento)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w, 50).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w, 50).toFixed(1), unitMass: "mEq", obs: "Teto: 50 mEq. Garantir ventilação.", tabs: ["pcr", "choque", "todos"] },
-            { id: 21, name: "Gluconato de Cálcio 10%", indication: "Hipocalcemia / Hipercalemia", pres: "100 mg/ml", usage: "0,5 ml/kg (50mg/kg)", defaultMgKg: 0.5, doseUnit: "ml/kg", unitDisplay: "ml/kg", editable: true, isVol: true, route: "EV / IO (lento)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.5) * w, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.5) * 100 * w, 2000).toFixed(0), unitMass: "mg", obs: "Teto: 2 g (20 ml). Infundir em 5-10 min c/ monitorização.", tabs: ["pcr","antidotos", "choque", "todos"] },
-            { id: 24, name: "Adenosina", indication: "TSV", pres: "3 mg/ml", usage: "1ª: 0,1 mg/kg | 2ª: 0,2 mg/kg", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV (push rápido)", doseML: (w, a, c, ov) => { const factor = (c === 0 ? 0.1 : 0.2); const maxML = (c === 0 ? 2 : 4); return Math.min(factor * w / 3, maxML).toFixed(1); }, unitML: "ml", doseMass: (w, a, c, ov) => { const factor = (c === 0 ? 0.1 : 0.2); const maxM = (c === 0 ? 6 : 12); return Math.min(factor * w, maxM).toFixed(1); }, unitMass: "mg", obs: "Teto 1ª: 6mg | 2ª: 12mg. Flush rápido SF pós-dose.", repeat: 2, maxDoses: 3, tabs: ["tsv", "todos"] },
-            { id: 25, name: "Amiodarona", indication: "FV / TV sem pulso", pres: "50 mg/ml", usage: "5 mg/kg", defaultMgKg: 5, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => { const mg = (ov !== undefined ? ov : 5); const max = (c === 0 ? 6 : 3); return Math.min((mg * w) / 50, max).toFixed(1); }, unitML: "ml", doseMass: (w, a, c, ov) => { const mg = (ov !== undefined ? ov : 5); const max = (c === 0 ? 300 : 150); return Math.min(mg * w, max).toFixed(0); }, unitMass: "mg", obs: "Teto 1ª: 300mg | Subseq: 150mg. Bolus na FV/TVSP.", repeat: 10, maxDoses: 3, tabs: ["pcr", "tsv", "todos"] },
-            { id: 26, name: "Lidocaína 2%", indication: "FV / TVSP refratária", pres: "20 mg/ml", usage: "1 mg/kg", defaultMgKg: 1, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => Math.min(((ov !== undefined ? ov : 1) * w) / 20, 5).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w, 100).toFixed(0), unitMass: "mg", obs: "Teto: 100 mg.", repeat: 5, maxDoses: 3, tabs: ["pcr", "todos"] },
-            { id: 27, name: "Glicose 25%", indication: "Hipoglicemia", pres: "250 mg/ml", usage: "2 ml/kg (0,5 g/kg)", defaultMgKg: 2, doseUnit: "ml/kg", unitDisplay: "ml/kg", editable: true, isVol: true, route: "EV / IO", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 2) * w, 100).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 2) * 0.25 * w, 25).toFixed(1), unitMass: "g", obs: "Teto: 100 ml (25g). Diluir 1:1 p/ lactentes.", tabs: ["pcr", "choque", "convulsao", "todos"] },
-            { id: 29, name: "Atropina", indication: "Bradicardia sintomática / Intox.", pres: "0,25 mg/ml", usage: "0,02 mg/kg", defaultMgKg: 0.02, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => { const mg = (ov !== undefined ? ov : 0.02) * w; const min = 0.4; const max = a >= 12 ? 4.0 : 2.0; return Math.min(Math.max(min, mg / 0.25), max).toFixed(1); }, unitML: "ml", doseMass: (w, a, c, ov) => { const mg = (ov !== undefined ? ov : 0.02) * w; const min = 0.1; const max = a >= 12 ? 1.0 : 0.5; return Math.min(Math.max(min, mg), max).toFixed(2); }, unitMass: "mg", obs: "Mín: 0,1 mg. Máx/dose: 0,5 mg (criança) / 1 mg (adol.).", repeat: 5, maxDoses: 2, tabs: ["pcr", "antidotos", "todos"] },
+            { id: 19, name: "Bicarbonato de Sódio 8,4%", indication: "Exceção: hiperK ou bloqueador de canal de sódio", pres: "1 mEq/ml", usage: "1 mEq/kg", defaultMgKg: 1, doseUnit: "mEq/kg", unitDisplay: "mEq/kg", editable: true, isMass: true, route: "EV / IO (lento)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w, 50).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w, 50).toFixed(1), unitMass: "mEq", obsHighlight: "NÃO usar de rotina na PCR.", obs: "Teto 50 mEq. Só hipercalemia ou intoxicação por bloqueador de canal de sódio, com ventilação garantida. Lactente: diluir 8,4% 1:1 e dar o dobro do volume, ou usar 4,2%. Na CAD, só se pH < 6,9 com instabilidade.", tabs: ["pcr", "choque", "todos"] },
+            { id: 21, name: "Gluconato de Cálcio 10%", indication: "Hipocalcemia / Hipercalemia / Bloq. de cálcio", pres: "100 mg/ml", usage: "0,5-1 ml/kg", defaultMgKg: 0.5, doseUnit: "ml/kg", unitDisplay: "ml/kg", editable: true, isVol: true, route: "EV / IO (lento)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.5) * w, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.5) * 100 * w, 2000).toFixed(0), unitMass: "mg", obsHighlight: "NÃO usar de rotina na PCR.", obs: "Faixa 0,5-1 ml/kg (50-100 mg/kg). Teto 2 g (20 ml). Infundir em 5-10 min com monitor. Não misturar com bicarbonato.", tabs: ["pcr","antidotos", "choque", "todos"] },
+            { id: 24, name: "Adenosina", indication: "TSV", pres: "3 mg/ml", usage: "1ª: 0,1 mg/kg | 2ª: 0,2 mg/kg", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV (push rápido)", doseML: (w, a, c, ov) => { const factor = (c === 0 ? 0.1 : 0.2); const maxML = (c === 0 ? 2 : 4); return Math.min(factor * w / 3, maxML).toFixed(1); }, unitML: "ml", doseMass: (w, a, c, ov) => { const factor = (c === 0 ? 0.1 : 0.2); const maxM = (c === 0 ? 6 : 12); return Math.min(factor * w, maxM).toFixed(1); }, unitMass: "mg", obs: "Teto 1ª: 6 mg. 2ª: 12 mg. Flush rápido de SF. São duas doses; a terceira não está no PALS.", repeat: 2, maxDoses: 2, tabs: ["tsv", "todos"] },
+            { id: 25, name: "Amiodarona (PCR)", indication: "FV / TV sem pulso — bolus", pres: "50 mg/ml", usage: "5 mg/kg em bolus", defaultMgKg: 5, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO (bolus)", doseML: (w, a, c, ov) => { const mg = (ov !== undefined ? ov : 5); const max = (c === 0 ? 300 : 150); return (Math.min(mg * w, max) / 50).toFixed(1); }, unitML: "ml", doseMass: (w, a, c, ov) => { const mg = (ov !== undefined ? ov : 5); const max = (c === 0 ? 300 : 150); return Math.min(mg * w, max).toFixed(0); }, unitMass: "mg", obsHighlight: "BOLUS só na PCR. Com pulso, usar o card da TSV (infusão 20-60 min).", obs: "Após o 3º choque, alternativa à lidocaína. Teto 1ª dose 300 mg. Doses seguintes: 5 mg/kg com teto 150 mg (algoritmo AHA 2025). Até 3 doses. Intervalo mínimo 4 min.", repeat: 4, maxDoses: 3, tabs: ["pcr", "todos"] },
+            { id: 26, name: "Lidocaína 2%", indication: "FV / TVSP — alternativa à amiodarona", pres: "20 mg/ml", usage: "1 mg/kg, repetir 0,5", defaultMgKg: 1, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => { const mgkg = c === 0 ? (ov !== undefined ? ov : 1) : 0.5; const maxMg = c === 0 ? 100 : 50; return (Math.min(mgkg * w, maxMg) / 20).toFixed(2); }, unitML: "ml", doseMass: (w, a, c, ov) => { const mgkg = c === 0 ? (ov !== undefined ? ov : 1) : 0.5; const maxMg = c === 0 ? 100 : 50; return Math.min(mgkg * w, maxMg).toFixed(0); }, unitMass: "mg", bic: { formula: (w) => `Manutenção: diluir <strong>${(3 * w).toFixed(1)} ml</strong> de lidocaína 2% + SF 0,9% qsp 50 ml.<br>1 ml/h = 20 mcg/kg/min (faixa 1-2,5 ml/h = 20-50 mcg/kg/min).` }, obs: "Após o 3º choque, no lugar da amiodarona — não é o passo seguinte. Ataque 1 mg/kg (teto 100 mg). Repetir uma vez 0,5 mg/kg (teto 50 mg). Se a BIC começar >15 min depois do ataque, repetir o bolus.", repeat: 4, maxDoses: 2, tabs: ["pcr", "todos"] },
+            { id: 27, name: "Glicose 25%", indication: "Hipoglicemia confirmada", pres: "250 mg/ml", usage: "2 ml/kg (0,5 g/kg)", defaultMgKg: 2, doseUnit: "ml/kg", unitDisplay: "ml/kg", editable: true, isVol: true, route: "EV / IO", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 2) * w, 100).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 2) * 0.25 * w, 25).toFixed(1), unitMass: "g", obsHighlight: (w, a) => (a < 1 || w <= 4) ? `LACTENTE: não use este volume de SG 25%. Prefira SG 10% ${Math.min(5 * w, 250).toFixed(0)} ml.` : "", obs: (w, a) => (a < 1 || w <= 4) ? `Só se a glicemia estiver baixa. SG 10% ${Math.min(5 * w, 250).toFixed(0)} ml (5 ml/kg) entrega os mesmos 0,5 g/kg. Diluir o SG 25% 1:1 sem dobrar o volume corta a dose pela metade.` : "Só se a glicemia estiver baixa. Teto 100 ml (25 g).", tabs: ["pcr", "choque", "convulsao", "todos"] },
+            { id: 29, name: "Atropina (bradicardia)", indication: "Bradicardia vagal ou BAV — não é rotina na assistolia", pres: "0,25 mg/ml", usage: "0,02 mg/kg", defaultMgKg: 0.02, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => { const mg = (ov !== undefined ? ov : 0.02) * w; return Math.min(Math.max(0.4, mg / 0.25), 2.0).toFixed(1); }, unitML: "ml", doseMass: (w, a, c, ov) => { const mg = (ov !== undefined ? ov : 0.02) * w; return Math.min(Math.max(0.1, mg), 0.5).toFixed(2); }, unitMass: "mg", obsHighlight: "NÃO usar esta dose em organofosforado.", obs: "Mínimo 0,1 mg. Máximo 0,5 mg por dose em qualquer idade. Repetir uma vez. Teto total: 1 mg na criança e 3 mg no adolescente. Adrenalina é a primeira droga se houver comprometimento.", repeat: 5, maxDoses: 2, tabs: ["pcr", "todos"] },
             { id: 30, name: "Cetamina (Ketamina)", indication: "Sedação / ISR", pres: "50 mg/ml", usage: "1,5 - 2 mg/kg", defaultMgKg: 1.5, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => (((ov !== undefined ? ov : 1.5) * w) / 50).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 1.5) * w).toFixed(1), unitMass: "mg", obs: "Estabilidade hemodinâmica. Libera catecolaminas.", tabs: ["sedacao", "todos"] },
-            { id: 32, name: "Rocurônio", indication: "Bloqueio Neuromuscular ISR", pres: "10 mg/ml", usage: "1 mg/kg", defaultMgKg: 1, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => ((ov !== undefined ? ov : 1) * w / 10).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 1) * w).toFixed(0), unitMass: "mg", obs: "Não administrar sem via aérea/sedação garantida.", tabs: ["sedacao", "todos"] },
+            { id: 32, name: "Rocurônio", indication: "Bloqueio Neuromuscular ISR", pres: "10 mg/ml", usage: "1,2 mg/kg", defaultMgKg: 1.2, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => (((ov !== undefined ? ov : 1.2) * w) / 10).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 1.2) * w).toFixed(0), unitMass: "mg", obs: "ISR: 1,2 mg/kg. Não administrar sem via aérea e sedação garantidas.", tabs: ["sedacao", "todos"] },
             { id: 33, name: "Fentanil (BIC)", indication: "Analgesia contínua", pres: "50 mcg/ml", usage: "1 - 5 mcg/kg/h", defaultMgKg: 1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(w).toFixed(1)}ml Fentanil + SF 0,9% qsp 50ml.<br> 1ml/h = 1 mcg/kg/h.` }, obs: "Risco de rigidez torácica em bolus rápido.", tabs: ["sedacao", "todos"] },
             { 
                 id: 37, 
@@ -654,38 +801,46 @@
                 doseML: (w, a, c, ov) => Math.min(ov !== undefined ? ov : (w < 20 ? 4 : 8), 10), 
                 unitML: "jatos", 
                 repeat: 20, 
-                maxDoses: 3, 
-                obs: "Repetir a cada 20 minutos (Padrão: 4 jatos se <20kg, 8 jatos se >=20kg). Teto: 10 jatos.", 
+                obs: "1ª hora: a cada 20 min, em geral 3 vezes. Depois, a cada 1-4 h. Padrão: 4 jatos se <20 kg e 8 se ≥20 kg. Teto: 10 jatos por dose. Na crise grave que não tolera o spray, usar nebulização.", 
                 tabs: ["asma", "anafilaxia", "todos"] 
             },
-            { id: 38, name: "Atrovent (Ipratropio)", indication: "Broncoespasmo (Asma grave)", pres: "0,25 mg/ml (250mcg/ml)", usage: "<20kg: 20 gts | >20kg: 40 gts", defaultMgKg: 20, editable: false, isDrops: true, route: "Inalatória", doseML: (w, a, c, ov) => (w < 20 ? 20 : 40), unitML: "gotas", repeat: 20, maxDoses: 3, tabs: ["asma", "todos"] },
+            { id: 38, name: "Atrovent (Ipratropio)", indication: "Broncoespasmo (Asma grave)", pres: "0,25 mg/ml (250mcg/ml)", usage: "<20 kg: 20 gotas | ≥20 kg: 40 gotas", defaultMgKg: 20, editable: false, isDrops: true, route: "Inalatória", doseML: (w, a, c, ov) => (w < 20 ? 20 : 40), unitML: "gotas", repeat: 20, obs: "20 gotas = 1 ml = 250 mcg (conta de 20 gotas/ml). 1ª hora a cada 20 min, em geral 3 doses, junto com o beta-agonista. Depois, 4/4-6/6 h ou suspender.", tabs: ["asma", "todos"] },
+            { id: 63, name: "Salbutamol nebulização", indication: "Asma grave / não tolera spray", pres: "5 mg/ml", usage: "<20 kg: 2,5 mg | ≥20 kg: 5 mg", defaultMgKg: (w) => (w < 20 ? 2.5 : 5), doseUnit: "mg", unitDisplay: "mg", editable: true, isMass: true, route: "Nebulização (O2 6-8 L/min)", doseML: (w, a, c, ov) => (Math.min(ov !== undefined ? ov : (w < 20 ? 2.5 : 5), 5) / 5).toFixed(2), unitML: "ml", doseMass: (w, a, c, ov) => Math.min(ov !== undefined ? ov : (w < 20 ? 2.5 : 5), 5).toFixed(1), unitMass: "mg", repeat: 20, obs: "Dose fixa da SBP: 2,5 mg abaixo de 20 kg ou 5 mg a partir de 20 kg. 1ª hora a cada 20 min. Pode ir no mesmo nebulizador do ipratrópio nas primeiras doses. Depois, espaçar 1-4 h.", tabs: ["asma", "todos"] },
             { id: 57, name: "Solumedrol (Metilprednisolona)", indication: "Asma grave / Anafilaxia", pres: "125 mg / 2 ml", usage: "2 mg/kg ataque", defaultMgKg: 2, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => (Math.min((ov !== undefined ? ov : 2) * w, 60) / 125 * 2).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 2) * w, 60).toFixed(0), unitMass: "mg", obs: "Teto: 60 mg. Início de ação em 4-6h.", tabs: ["asma", "anafilaxia", "todos"] },
-            { id: 18, name: "Sulfato de Magnésio 10%", indication: "Asma grave / Torsades", pres: "100 mg/ml", usage: "50 mg/kg", defaultMgKg: 50, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO (lento)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 50) * w / 100, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 50) * w, 2000).toFixed(0), unitMass: "mg", obs: "Teto: 2 g. Infundir em 20 min. Monitorar PA.", tabs: ["pcr", "asma", "todos"] },
+            { id: 18, name: "Sulfato de Magnésio 10%", indication: "Asma grave / Torsades", pres: "100 mg/ml", usage: "50 mg/kg", defaultMgKg: 50, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 50) * w / 100, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 50) * w, 2000).toFixed(0), unitMass: "mg", obsHighlight: "Asma: infundir em 20 min. Torsades na PCR: BOLUS, não infusão de 20 min.", obs: "Faixa 25-75 mg/kg. Este card usa 50. Teto 2 g. Na asma pode repetir após 1 h. Monitorar PA.", repeat: 60, maxDoses: 2, tabs: ["pcr", "asma", "todos"] },
             { id: 39, name: "Terbutalina SC", indication: "Crise de asma refratária", pres: "0,5 mg/ml", usage: "0,01 mg/kg", defaultMgKg: 0.01, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "SC", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w / 0.5, 0.5).toFixed(2), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w, 0.25).toFixed(2), unitMass: "mg", repeat: 15, maxDoses: 3, obs: "Teto: 0,25 mg. Avaliar taquicardia.", tabs: ["asma", "todos"] },
-            { id: 41, name: "Terbutalina (BIC)", indication: "Crise de asma refratária", pres: "0,5 mg/ml", usage: "0,1 - 1 mcg/kg/min", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.6 * w).toFixed(2)}ml Terbutalina + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 mcg/kg/min.` }, obs: "Monitorar taquicardia e K+ sérico.", tabs: ["asma", "todos"] },
+            { id: 41, name: "Terbutalina (BIC)", indication: "Crise de asma refratária", pres: "0,5 mg/ml", usage: "0,1 - 4 mcg/kg/min", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.6 * w).toFixed(2)}ml Terbutalina + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 mcg/kg/min. Iniciar em 1 ml/h e titular.` }, obs: "Iniciar 0,1 mcg/kg/min. Subir de 0,2-0,5 mcg/kg/min. Casos refratários podem chegar a 4-10 mcg/kg/min em UTI. Monitorar FC e K+.", tabs: ["asma", "todos"] },
             { id: 42, name: "Difenidramina", indication: "Anafilaxia (adjuvante)", pres: "50 mg/ml", usage: "1 mg/kg", defaultMgKg: 1, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w / 50, 1).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w, 50).toFixed(0), unitMass: "mg", obs: "Teto: 50 mg. Não substitui adrenalina.", tabs: ["anafilaxia", "todos"] },
-            { id: 43, name: "Diazepam", indication: "Crise convulsiva", pres: "5 mg/ml", usage: "0,3 mg/kg", defaultMgKg: 0.3, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.3) * w / 5, 2).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.3) * w, 10).toFixed(1), unitMass: "mg", repeat: 5, maxDoses: 2, obs: "Teto: 10 mg. Risco de apneia EV rápido.", tabs: ["convulsao", "sedacao", "todos"] },
-            { id: 44, name: "Fenitoína", indication: "Crise convulsiva (Ataque)", pres: "50 mg/ml", usage: "20 mg/kg", defaultMgKg: 20, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO (lento)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w / 50, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w, 1000).toFixed(0), unitMass: "mg", obs: "Teto: 1 g. Correr em 20-30 min (máx 1 mg/kg/min).", tabs: ["convulsao", "tce", "todos"] },
-            { id: 45, name: "Fenobarbital", indication: "Status Epilepticus", pres: "100 mg/ml", usage: "20 mg/kg", defaultMgKg: 20, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w / 100, 10).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w, 1000).toFixed(0), unitMass: "mg", obs: "Teto: 1 g. Infundir lento.", tabs: ["convulsao", "todos"] },
+            { id: 60, name: "Midazolam (bolus crise)", indication: "Crise convulsiva — 1ª linha", pres: "5 mg/ml", usage: "0,2 mg/kg", defaultMgKg: 0.2, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "IM / IN / Bucal / EV", doseML: (w, a, c, ov) => (Math.min((ov !== undefined ? ov : 0.2) * w, 10) / 5).toFixed(2), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.2) * w, 10).toFixed(1), unitMass: "mg", repeat: 5, maxDoses: 2, obs: "Sem acesso: IM, intranasal ou bucal. Este volume é da apresentação 5 mg/ml. EV: 0,1-0,2 mg/kg lento. Teto 10 mg/dose. Repetir 1 vez em 5 min. Checar glicemia.", tabs: ["convulsao", "todos"] },
+            { id: 43, name: "Diazepam", indication: "Crise convulsiva (se já houver EV)", pres: "5 mg/ml", usage: "0,2 mg/kg", defaultMgKg: 0.2, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.2) * w / 5, 2).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.2) * w, 10).toFixed(1), unitMass: "mg", repeat: 5, maxDoses: 2, obs: "Faixa 0,15-0,3 mg/kg. Este card usa 0,2. Teto 10 mg. EV lento: risco de apneia. Sem acesso, preferir midazolam IM/IN/bucal. Retal, se nada mais houver: 0,5 mg/kg (teto 20 mg).", tabs: ["convulsao", "sedacao", "todos"] },
+            { id: 44, name: "Fenitoína", indication: "Crise convulsiva (ataque) — não profilaxia", pres: "50 mg/ml", usage: "20 mg/kg", defaultMgKg: 20, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO (lento)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w / 50, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w, 1000).toFixed(0), unitMass: "mg", obs: (w) => { const mg = Math.min(20 * w, 1000); const minutes = Math.ceil(Math.max(mg / Math.max(w, 0.1), mg / 50)); return `Teto 1 g. Correr em pelo menos ${minutes} min: o mais lento entre 1 mg/kg/min e 50 mg/min. Não diluir em soro glicosado. Se a crise persistir: 5-10 mg/kg, não repetir 20. Não usar como profilaxia de rotina no TCE.`; }, tabs: ["convulsao", "tce", "todos"] },
+            { id: 45, name: "Fenobarbital", indication: "Status Epilepticus", pres: "100 mg/ml", usage: "20 mg/kg", defaultMgKg: 20, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w / 100, 10).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 20) * w, 1000).toFixed(0), unitMass: "mg", obs: "Teto 1 g. Infundir lento (até 1 mg/kg/min). Risco alto de apneia, sobretudo depois de benzodiazepínico. Ter via aérea pronta.", tabs: ["convulsao", "todos"] },
             { id: 46, name: "Nitroprussiato (Nipride) (BIC)", indication: "Crise hipertensiva", pres: "25 mg/ml", usage: "0,3 - 5 mcg/kg/min", defaultMgKg: 0.3, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(0.3 * w / 25).toFixed(3)}ml Nipride + SG 5% qsp 50ml.<br> 1ml/h = 0,1 mcg/kg/min.` }, obs: "Proteger da luz.", tabs: ["hipertensao", "todos"] },
-            { id: 34, name: "Midazolam (BIC)", indication: "Sedação / Mal convulsivo", pres: "50 mg/10ml", usage: "0,1 mg/kg/h", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(w).toFixed(1)}ml Midazolam + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 mg/kg/h.` }, obs: "Monitorar hemodinâmica.", tabs: ["sedacao", "convulsao", "todos"] },
-            { id: 49, name: "Manitol 20%", indication: "HIC / Edema cerebral", pres: "200 mg/ml", usage: "0,5 - 1 g/kg", defaultMgKg: 0.5, doseUnit: "g/kg", unitDisplay: "g/kg", editable: true, isMass: true, route: "EV (lento)", doseML: (w, a, c, ov) => ((ov !== undefined ? ov : 0.5) * 5 * w).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 0.5) * w).toFixed(1), unitMass: "g", obs: "Infundir em 20-30 min.", tabs: ["tce", "todos"] },
-            { id: 50, name: "Dexametasona", indication: "Edema cerebral / Crupe / Asma", pres: "4 mg/ml", usage: "0,6 mg/kg", defaultMgKg: 0.6, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.6) * w / 4, 4).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.6) * w, 16).toFixed(1), unitMass: "mg", obs: "Teto: 16 mg.", tabs: ["tce", "todos"] },
+            { id: 34, name: "Midazolam (BIC)", indication: "Sedação / Mal convulsivo", pres: "50 mg/10ml", usage: "0,1 mg/kg/h", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${(w).toFixed(1)}ml Midazolam + SF 0,9% qsp 50ml.<br> 1ml/h = 0,1 mg/kg/h.` }, obs: "No mal convulsivo, fazer o bolus de midazolam antes desta BIC. Iniciar 0,1 mg/kg/h e titular. A bomba não substitui o ataque. Monitorar hemodinâmica.", tabs: ["sedacao", "convulsao", "todos"] },
+            { id: 59, name: "NaCl 3%", indication: "Hipertensão intracraniana no TCE", pres: "NaCl 3%", usage: "2-5 ml/kg", defaultMgKg: 3, doseUnit: "ml/kg", unitDisplay: "ml/kg", editable: true, isVol: true, route: "EV (10-20 min)", doseML: (w, a, c, ov) => { const mlkg = Math.min(Math.max(ov !== undefined ? ov : 3, 0), 5); return (mlkg * w).toFixed(0); }, unitML: "ml", obs: "Faixa 2-5 ml/kg em 10-20 min. Primeira escolha da diretriz de TCE pediátrico. Preferir ao manitol se houver hipotensão. Corticoide não trata HIC traumática.", tabs: ["tce", "todos"] },
+            { id: 49, name: "Manitol 20%", indication: "HIC / Edema cerebral", pres: "200 mg/ml", usage: "0,5 - 1 g/kg", defaultMgKg: 0.5, doseUnit: "g/kg", unitDisplay: "g/kg", editable: true, isMass: true, route: "EV (20-30 min)", doseML: (w, a, c, ov) => ((ov !== undefined ? ov : 0.5) * 5 * w).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 0.5) * w).toFixed(1), unitMass: "g", obs: "Infundir em 20-30 min. Se o paciente estiver hipotenso, preferir NaCl 3%. Corticoide não está indicado no TCE.", tabs: ["tce", "todos"] },
+            { id: 50, name: "Dexametasona", indication: "Crupe / Asma — não usar no TCE", pres: "4 mg/ml", usage: "0,6 mg/kg", defaultMgKg: 0.6, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM / VO", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.6) * w / 4, 4).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.6) * w, 16).toFixed(1), unitMass: "mg", obsHighlight: "Não indicada para hipertensão intracraniana traumática.", obs: "Crupe ou asma: dose única 0,6 mg/kg, teto 16 mg. Não reduz PIC no TCE e não deve ser usada para isso.", tabs: ["asma", "todos"] },
             { 
                 id: 51, 
                 name: "Insulina Regular (BIC)", 
                 indication: "Cetoacidose Diabética (CAD)", 
                 pres: "100 UI/ml", 
-                usage: "0,1 UI/kg/h", 
+                usage: "0,05-0,1 UI/kg/h", 
                 defaultMgKg: 0.1, 
                 editable: false, 
                 route: "EV", 
-                doseML: (w) => "BIC", 
+                doseML: (w) => { const r = Math.round(w * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); }, 
                 unitML: "ml/h", 
                 bic: { 
-                    formula: (w) => `Diluir <strong>50 UI (0,5 ml) de Insulina Regular</strong> + SF 0,9% qsp <strong>500 ml</strong>.<br>Infusão: <strong>${w.toFixed(0)} ml/h</strong> (Equivalente a 0,1 U/kg/h).` 
+                    formula: (w) => {
+                        const r = Math.round(w * 10) / 10;
+                        const half = Math.round(w * 5) / 10;
+                        const fmt = (n) => Number.isInteger(n) ? String(n) : n.toFixed(1);
+                        return `Diluir <strong>50 UI</strong> de insulina regular em <strong>500 ml</strong> de SF 0,9% (0,1 UI/ml).<br><strong>${fmt(r)} ml/h = 0,1 UI/kg/h</strong> (ml/h = peso).<br>0,05 UI/kg/h = <strong>${fmt(half)} ml/h</strong>. Ajuste de ±0,05 UI/kg/h conforme a queda.`;
+                    }
                 }, 
-                obs: "Após hidratação inicial e expansão. Manter glicemia entre 150-250 mg/dl.", 
+                obsHighlight: "Se K < 3,3: não ligar a bomba, ou pausar, e repor potássio antes. DX 200–250: reduzir a bomba pela metade.", 
+                obs: "Só insulina regular, em infusão contínua, sem bolus. Se K < 3,3, não ligar a bomba (ou pausar) e repor potássio antes. Glicemia capilar de hora em hora. Queda alvo: 70 a 90 mg/dL por hora. Se a queda passar disso, baixar 0,05 UI/kg/h. Com DX 200–250: metade da dose, junto com dieta ou soro de manutenção. Na expansão, se DX < 200, usar soro glicosado ao meio. Primar o equipo — a insulina gruda no plástico.", 
                 tabs: ["cad", "todos"] 
             },
             { 
@@ -693,27 +848,33 @@
                 name: "KCl 19,1% (Correção na C.A.D.)", 
                 indication: "Correção de potássio na Cetoacidose Diabética", 
                 pres: "2,5 mEq/ml", 
-                usage: "Conc. Máx 25 mEq/L | Vel. Máx 0,25 mEq/kg/h", 
+                usage: "Máx 25 mEq/L | 0,25 mEq/kg/h", 
                 defaultMgKg: 0.25, 
                 editable: false, 
-                route: "EV", 
-                doseML: (w) => "BIC", 
+                route: "EV (na hidratação, nunca puro)", 
+                doseML: (w) => (((w * 0.25) / (12.5 / 505))).toFixed(0), 
                 unitML: "ml/h", 
-                obsHighlight: "TETOS DE SEGURANÇA: Conc. Máx 25 mEq/L | Veloc. Máx 0,25 mEq/kg/h", 
+                obsHighlight: "Teto do serviço: 25 mEq/L e 0,25 mEq/kg/h. Só KCl. Não correr puro.", 
                 bic: { 
-                    formula: (w) => `
-                        <div class="space-y-1">
-                            <p class="text-red-700 font-black"><strong>Concentração Máx (25 mEq/L):</strong></p>
-                            <p>SF 0,9% 500ml + <strong>KCl 19,1% 5 ml</strong> (12.5 mEq no total)</p>
-                            <p class="text-red-700 mt-2 font-black"><strong>Velocidade Máx Infusão (0,25 mEq/kg/h):</strong></p>
-                            <p>Alvo: ${(w * 0.25).toFixed(2)} mEq/h ➔ <strong>Infundir a ${(((w * 0.25) / (12.5 / 505))).toFixed(0)} ml/h</strong></p>
-                        </div>` 
+                    formula: (w) => {
+                        const meqH = w * 0.25;
+                        const mlh = (meqH / (12.5 / 505));
+                        return `<div class="space-y-1">
+                            <p class="text-red-700 font-black"><strong>Concentração máxima (25 mEq/L):</strong></p>
+                            <p>SF 0,9% 500 ml + <strong>KCl 19,1% 5 ml</strong> (12,5 mEq no total).</p>
+                            <p class="text-red-700 mt-2 font-black"><strong>Velocidade máxima (0,25 mEq/kg/h):</strong></p>
+                            <p>Alvo: ${meqH.toFixed(2)} mEq/h → <strong>infundir a ${mlh.toFixed(0)} ml/h</strong> desta bolsa.</p>
+                            <p class="mt-2">Reposição com KCl 19,1%: no máximo 25 mEq/L e 0,25 mEq/kg/h. Começar na 2ª hora se K &lt; 6,5 e houver diurese; se K &gt; 6,5, na 2ª hora só NaCl 0,9% até o novo K. Se K < 3,3, não ligar a bomba de insulina (ou pausar) e repor potássio antes.</p>
+                        </div>`;
+                    }
                 }, 
                 tabs: ["cad", "todos"] 
             },
-            { id: 53, name: "Naloxona", indication: "Reversão opioides", pres: "0,4 mg/ml", usage: "0,1 mg/kg", defaultMgKg: 0.1, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.1) * w / 0.4, 5).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.1) * w, 2).toFixed(1), unitMass: "mg", repeat: 2, maxDoses: 5, obs: "Teto: 2 mg.", tabs: ["antidotos", "todos"] },
-            { id: 54, name: "Flumazenil", indication: "Reversão BZD", pres: "0,1 mg/ml", usage: "0,01 mg/kg", defaultMgKg: 0.01, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w / 0.1, 2).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w, 0.2).toFixed(2), unitMass: "mg", obs: "Teto: 0,2 mg. Evitar em uso crônico.", tabs: ["antidotos", "todos"] },
-            { id: 56, name: "Vitamina K", indication: "Hemorragia", pres: "10 mg/ml", usage: "1 mg (<1a) ou 5 mg (>1a)", defaultMgKg: 1, editable: false, route: "IM", doseML: (w, a, c, ov) => (a < 1 ? 0.1 : 0.5).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => (a < 1 ? 1 : 5), unitMass: "mg", tabs: ["todos"] }
+            { id: 53, name: "Naloxona", indication: "Reversão opioides", pres: "0,4 mg/ml", usage: "0,1 mg/kg", defaultMgKg: 0.1, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.1) * w / 0.4, 5).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.1) * w, 2).toFixed(1), unitMass: "mg", repeat: 2, maxDoses: 5, obs: "Reversão completa: 0,1 mg/kg, teto 2 mg, a cada 2 min. Em quem usa opioide de forma contínua, doses de 1-5 mcg/kg evitam abstinência grave. Sem resposta, rever o diagnóstico.", tabs: ["antidotos", "todos"] },
+            { id: 54, name: "Flumazenil", indication: "Reversão BZD — não é rotina", pres: "0,1 mg/ml", usage: "0,01 mg/kg", defaultMgKg: 0.01, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w / 0.1, 2).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 0.01) * w, 0.2).toFixed(2), unitMass: "mg", repeat: 1, maxDoses: 4, obs: "Dose inicial com teto de 0,2 mg. Pode repetir a cada 1 min. Teto cumulativo: 0,05 mg/kg ou 1 mg. Evitar no uso crônico de benzodiazepínico (risco de convulsão).", tabs: ["antidotos", "todos"] },
+            { id: 62, name: "Atropina (organofosforado)", indication: "Intoxicação por organofosforado ou carbamato", pres: "0,25 mg/ml", usage: "0,05-0,1 mg/kg", defaultMgKg: 0.05, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: (w, a, c, ov) => (((ov !== undefined ? ov : 0.05) * w) / 0.25).toFixed(2), unitML: "ml", doseMass: (w, a, c, ov) => ((ov !== undefined ? ov : 0.05) * w).toFixed(2), unitMass: "mg", repeat: 5, unlimited: true, actionLabel: "Repetir dose", obsHighlight: "SEM teto de 0,5 mg. Repetir até secar a secreção.", obs: "Começar com 0,05 mg/kg; na intoxicação grave, 0,1 mg/kg. Repetir a cada 5 min até atropinização (secreção seca, FC adequada, pulmão limpo). A dose de bradicardia não serve aqui.", tabs: ["antidotos", "todos"] },
+            { id: 58, name: "Amiodarona (TSV com pulso)", indication: "TSV refratária após adenosina e cardioversão", pres: "50 mg/ml", usage: "5 mg/kg em 20-60 min", defaultMgKg: 5, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV (infusão lenta)", doseML: (w, a, c, ov) => (Math.min((ov !== undefined ? ov : 5) * w, 300) / 50).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 5) * w, 300).toFixed(0), unitMass: "mg", actionLabel: "Iniciar infusão", obsHighlight: "NÃO fazer bolus. Infundir em 20-60 min, com monitor. Consultar cardiologia.", obs: "Teto 300 mg. O bolus da PCR não se usa em quem tem pulso. Procainamida ou sotalol são alternativas, com especialista.", tabs: ["tsv", "todos"] },
+            { id: 56, name: "Vitamina K", indication: "Hemorragia / deficiência", pres: "10 mg/ml", usage: "1 mg (<1a) ou 5 mg (≥1a)", defaultMgKg: 1, editable: false, route: "EV lento", doseML: (w, a, c, ov) => (a < 1 ? 0.1 : 0.5).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => (a < 1 ? 1 : 5), unitMass: "mg", obs: "Sangramento ativo: EV lento, não IM (risco de hematoma). Lactente: 1 mg. Criança maior: 2,5-5 mg. Reversão de warfarina varia de 1 a 10 mg conforme o INR — confirmar antes.", tabs: ["antidotos", "todos"] }
         ];
 
         function loadFromStorage() { 
@@ -729,17 +890,25 @@
                 pcrShockAppliedInCycle = s.pcrShockAppliedInCycle || false; 
                 patientInfo = s.patientInfo || { name: '', dob: '' }; 
                 tsvHistory = s.tsvHistory || { shock1: { sedated: false, synced: false, history: [] }, shock2: { sedated: false, synced: false, history: [] } }; 
-                currentAge = parseFloat(s.age) || 3; 
-                currentWeight = parseFloat(s.weight) || 14; 
+                currentAge = (s.age === 0 || s.age === '0') ? 0 : (parseFloat(s.age) || 3); 
+                currentWeight = parseFloat(s.weight) > 0 ? parseFloat(s.weight) : 14; 
+                estimateWeight = s.estimateWeight !== false;
+                if (estimateWeight) currentWeight = estimateWeightFromAge(currentAge);
                 customDoseOverrides = s.customDoseOverrides || {}; 
-                document.getElementById('ageInput').value = currentAge; 
-                document.getElementById('weightInput').value = currentWeight; 
+                setInputIfDiff(document.getElementById('ageInput'), formatAgeField()); 
+                setInputIfDiff(document.getElementById('weightInput'), currentWeight); 
+                syncEstimateUi(); 
                 metronomeActive = s.metronomeActive || false; 
                 metronomeSoundEnabled = s.metronomeSoundEnabled !== undefined ? s.metronomeSoundEnabled : true; 
                 const ni = document.getElementById('patientNameInput'), di = document.getElementById('patientDobInput'); 
-                if (ni) ni.value = patientInfo.name; 
-                if (di) di.value = patientInfo.dob; 
-                if (metronomeActive) { metronomeActive = false; togglePcrStatus(); } 
+                if (ni) setInputIfDiff(ni, patientInfo.name || ''); 
+                if (di) setInputIfDiff(di, patientInfo.dob || ''); 
+                if (metronomeActive) {
+                    metronomeActive = false;
+                    pcrCheckingRhythm = false;
+                    pcrShockTimerStart = null;
+                    if (metronomeInterval) { clearInterval(metronomeInterval); metronomeInterval = null; }
+                } 
             } catch (e) { console.error(e); } 
         }
 
@@ -747,7 +916,7 @@
             try { 
                 localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
                     timers, pcrHistory, pcrShockTimerStart, pcrCycleCount, pcrRhythmType, pcrShockAppliedInCycle, patientInfo, 
-                    tsvHistory, age: currentAge, weight: currentWeight, metronomeActive, metronomeSoundEnabled, customDoseOverrides 
+                    tsvHistory, age: currentAge, weight: currentWeight, estimateWeight, metronomeActive, metronomeSoundEnabled, customDoseOverrides 
                 })); 
             } catch (e) { console.error('Local storage full or disabled', e); } 
         }
@@ -758,35 +927,136 @@
             saveToStorage(); 
         }
 
-        function openResetModal() { document.getElementById('reset-confirm-modal').classList.remove('hidden'); }
-        function closeResetModal() { document.getElementById('reset-confirm-modal').classList.add('hidden'); }
-        function closeInitialResetModal() { document.getElementById('initial-reset-modal').classList.add('hidden'); }
-        function closeShockDoseModal() { document.getElementById('shock-dose-modal').classList.add('hidden'); }
+        function hideModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('hidden');
+            el.style.setProperty('display', 'none', 'important');
+        }
+        function showModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('hidden');
+            el.style.setProperty('display', el.classList.contains('flex') ? 'flex' : 'block', 'important');
+        }
+        function normalizeSession() {
+            const blankShock = () => ({ sedated: false, synced: false, history: [] });
+            if (!tsvHistory || typeof tsvHistory !== 'object') tsvHistory = { shock1: blankShock(), shock2: blankShock() };
+            ['shock1', 'shock2'].forEach(k => {
+                if (!tsvHistory[k] || typeof tsvHistory[k] !== 'object') tsvHistory[k] = blankShock();
+                if (!Array.isArray(tsvHistory[k].history)) tsvHistory[k].history = [];
+            });
+            if (!Array.isArray(pcrHistory)) pcrHistory = [];
+            if (!timers || typeof timers !== 'object') timers = {};
+            Object.keys(timers).forEach(id => {
+                const t = timers[id];
+                if (!t || typeof t !== 'object' || !medData.some(m => m.id == id)) { delete timers[id]; return; }
+                if (!Array.isArray(t.history)) t.history = [];
+            });
+            if (!(currentWeight > 0)) currentWeight = 14;
+            if (typeof currentAge !== 'number' || isNaN(currentAge)) currentAge = 3;
+        }
+        function dismissOverlays() {
+            ['push-dose-confirm-modal','tsv-safety-modal','shock-dose-modal','h-t-modal','reset-confirm-modal','initial-reset-modal','pulse-check-modal','pcr-rhythm-selection-modal','pcr-cycle-alert-modal','history-modal','version-modal'].forEach(hideModal);
+            const disc = document.getElementById('initial-disclaimer');
+            if (disc) disc.style.setProperty('display', 'none', 'important');
+            pcrCheckingRhythm = false;
+        }
+
+        function openResetModal() { showModal('reset-confirm-modal'); }
+        function closeResetModal() { hideModal('reset-confirm-modal'); }
+        function closeInitialResetModal() {
+            dismissOverlays();
+            normalizeSession();
+            writePatientInputs();
+            if (!currentTab) currentTab = 'equipamentos';
+            render();
+        }
+        function closeShockDoseModal() { hideModal('shock-dose-modal'); }
         
-        function executeReset() { 
-            timers = {}; pcrHistory = []; pcrShockTimerStart = null; pcrCycleCount = 1; pcrRhythmType = null; pcrShockAppliedInCycle = false;
-            htModalTriggeredInCycle2 = false; tsvHistory = { shock1: { sedated: false, synced: false, history: [] }, shock2: { sedated: false, synced: false, history: [] } };
-            patientInfo = { name: '', dob: '' }; expandedMeds = {}; customDoseOverrides = {};
-            if (metronomeInterval) { clearInterval(metronomeInterval); metronomeInterval = null; metronomeActive = false; }
-            currentAge = 3; currentWeight = 14;
-            document.getElementById('ageInput').value = 3; document.getElementById('weightInput').value = 14;
-            const ni = document.getElementById('patientNameInput'); const di = document.getElementById('patientDobInput');
-            if (ni) ni.value = ''; if (di) di.value = '';
-            localStorage.removeItem(STORAGE_KEY); 
-            closeResetModal(); 
-            closeInitialResetModal(); 
-            closeHistory();
-            render(); 
-            updateActivityMonitor();
+        let inputLock = 0;
+        let lastProgrammatic = { age: null, weight: null, name: null, dob: null };
+        function markProgrammatic(el, next) {
+            if (!el) return;
+            if (el.id === 'ageInput') lastProgrammatic.age = next;
+            else if (el.id === 'weightInput') lastProgrammatic.weight = next;
+            else if (el.id === 'patientNameInput') lastProgrammatic.name = next;
+            else if (el.id === 'patientDobInput') lastProgrammatic.dob = next;
+        }
+        function setInputIfDiff(el, value) {
+            if (!el) return;
+            const next = value == null ? '' : String(value);
+            markProgrammatic(el, next);
+            if (el.value === next) return;
+            inputLock++;
+            try { el.value = next; }
+            finally { setTimeout(() => { inputLock = Math.max(0, inputLock - 1); }, 0); }
+        }
+        function writePatientInputs() {
+            setInputIfDiff(document.getElementById('ageInput'), formatAgeField());
+            setInputIfDiff(document.getElementById('weightInput'), currentWeight);
+            const nameEl = document.getElementById('patientNameInput');
+            const dobEl = document.getElementById('patientDobInput');
+            if (nameEl) setInputIfDiff(nameEl, (patientInfo && patientInfo.name) || '');
+            if (dobEl) setInputIfDiff(dobEl, (patientInfo && patientInfo.dob) || '');
+            syncEstimateUi();
+        }
+
+        function syncEstimateUi() {
+            const box = document.getElementById('weightBox');
+            const input = document.getElementById('weightInput');
+            const cb = document.getElementById('estimateWeight');
+            const label = document.getElementById('weightLabel');
+            if (box) box.classList.toggle('opacity-70', estimateWeight);
+            if (input) input.readOnly = !!estimateWeight;
+            if (cb && cb.checked !== !!estimateWeight) cb.checked = !!estimateWeight;
+            if (label) label.textContent = estimateWeight ? 'Peso est.' : 'Peso kg';
+            const ageLabel = document.getElementById('ageUnitLabel');
+            if (ageLabel) ageLabel.textContent = currentAge < 1 ? 'Meses' : 'Anos';
+            document.querySelectorAll('[data-weight-step]').forEach(btn => { btn.disabled = !!estimateWeight; });
+        }
+
+        function toggleEstimateWeight(on) {
+            estimateWeight = !!on;
+            if (estimateWeight) currentWeight = estimateWeightFromAge(currentAge);
+            writePatientInputs();
+            saveToStorage();
+            render();
+        }
+
+        function executeReset() {
+            try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
+            hideModal('initial-reset-modal');
+            hideModal('reset-confirm-modal');
+            hideModal('history-modal');
+            const disc = document.getElementById('initial-disclaimer');
+            if (disc) disc.style.setProperty('display', 'none', 'important');
+            setTimeout(() => {
+                try {
+                    timers = {}; pcrHistory = []; pcrShockTimerStart = null; pcrCycleCount = 1; pcrRhythmType = null; pcrShockAppliedInCycle = false;
+                    htModalTriggeredInCycle2 = false; tsvHistory = { shock1: { sedated: false, synced: false, history: [] }, shock2: { sedated: false, synced: false, history: [] } };
+                    patientInfo = { name: '', dob: '' }; expandedMeds = {}; customDoseOverrides = {};
+                    pendingTsvShock = null;
+                    if (metronomeInterval) { clearInterval(metronomeInterval); metronomeInterval = null; }
+                    metronomeActive = false;
+                    pcrCheckingRhythm = false;
+                    checkingStartTime = null;
+                    pcrCycleAlertTriggered = false;
+                    currentAge = 3; currentWeight = 14; estimateWeight = true;
+                    currentTab = 'equipamentos';
+                    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                } catch (e) { console.error(e); }
+                try { closeInitialResetModal(); } catch (e) { console.error(e); dismissOverlays(); }
+            }, 30);
         }
 
         function closeDisclaimer() { 
-            document.getElementById('initial-disclaimer').style.display = 'none';
-            document.getElementById('initial-reset-modal').classList.remove('hidden');
+            document.getElementById('initial-disclaimer').style.setProperty('display', 'none', 'important');
+            showModal('initial-reset-modal');
         }
 
-        function openHTModal() { document.getElementById('h-t-modal').classList.remove('hidden'); }
-        function closeHTModal() { document.getElementById('h-t-modal').classList.add('hidden'); }
+        function openHTModal() { showModal('h-t-modal'); }
+        function closeHTModal() { hideModal('h-t-modal'); }
         function toggleMedExpand(id) { expandedMeds[id] = !expandedMeds[id]; render(); }
 
         function updateCustomDose(id, val) {
@@ -800,21 +1070,62 @@
             render();
         }
 
-        function updateAge(v) { const e = document.getElementById('ageInput'); e.value = Math.max(0, Math.min(parseInt(e.value || 0) + v, 18)); handleAgeInput(); }
-        function updateWeight(v) { const e = document.getElementById('weightInput'); e.value = Math.max(1, Math.min(parseInt(e.value || 1) + v, 100)); handleWeightInput(); }
-        
-        function handleAgeInput() { 
-            currentAge = parseFloat(document.getElementById('ageInput').value) || 0; 
-            currentWeight = currentAge > 0 ? (currentAge * 2) + 8 : 3.5; 
-            document.getElementById('weightInput').value = currentWeight; 
-            saveToStorage(); render(); 
+        function updateAge(v) {
+            const dir = v < 0 ? -1 : 1;
+            if (currentAge >= 1) {
+                const years = Math.round(currentAge);
+                if (dir < 0 && years <= 1) currentAge = 11 / 12;
+                else currentAge = Math.max(1, Math.min(18, years + dir));
+            } else {
+                const months = Math.max(0, Math.min(11, Math.round(currentAge * 12)));
+                if (dir > 0 && months >= 11) currentAge = 1;
+                else currentAge = Math.max(0, months + dir) / 12;
+            }
+            if (estimateWeight) currentWeight = estimateWeightFromAge(currentAge);
+            writePatientInputs();
+            saveToStorage();
+            render();
+        }
+        function updateWeight(v) {
+            if (estimateWeight) return;
+            const e = document.getElementById('weightInput');
+            const next = Math.round((((parseFloat(e.value) || 1) + v) * 10)) / 10;
+            e.value = Math.max(0.5, Math.min(next, 100));
+            handleWeightInput();
         }
         
-        function handleWeightInput() { 
-            currentWeight = parseFloat(document.getElementById('weightInput').value) || 0; 
-            currentAge = currentWeight <= 4 ? 0 : Math.max(0, Math.round((currentWeight - 8) / 2)); 
-            document.getElementById('ageInput').value = currentAge; 
-            saveToStorage(); render(); 
+        function handleAgeInput() {
+            if (inputLock) return;
+            const el = document.getElementById('ageInput');
+            if (!el || el.value === lastProgrammatic.age) return;
+            const raw = String(el.value || '').trim().toUpperCase().replace(',', '.');
+            if (raw === '') return;
+            const inMonths = currentAge < 1;
+            if (raw === 'RN') currentAge = 0;
+            else {
+                const n = parseFloat(raw);
+                if (isNaN(n)) return;
+                if (inMonths || raw === '0') {
+                    if (n >= 12) currentAge = Math.min(18, Math.max(1, Math.round(n / 12)));
+                    else currentAge = Math.max(0, Math.min(11, Math.round(n))) / 12;
+                } else if (n < 1) currentAge = 11 / 12;
+                else currentAge = Math.max(1, Math.min(18, Math.round(n)));
+            }
+            if (estimateWeight) currentWeight = estimateWeightFromAge(currentAge);
+            writePatientInputs();
+            saveToStorage();
+            render();
+        }
+
+        function handleWeightInput() {
+            if (inputLock) return;
+            if (estimateWeight) { writePatientInputs(); return; }
+            const el = document.getElementById('weightInput');
+            if (!el || el.value === lastProgrammatic.weight) return;
+            const raw = parseFloat(el.value);
+            currentWeight = isNaN(raw) ? 0 : Math.max(0, raw);
+            writePatientInputs();
+            saveToStorage(); render();
         }
 
         function isMedBlocked(id) { 
@@ -829,8 +1140,10 @@
             document.getElementById('printDateDisplay').innerText = new Date().toLocaleDateString('pt-BR');
             
             Object.keys(timers).forEach(id => { 
-                const m = medData.find(x => x.id == id), t = timers[id]; 
-                const rem = m.repeat && t.start && t.count < (m.maxDoses || 1) ? Math.max(0, (m.repeat * 60000) - (now - t.start)) : 0; 
+                const m = medData.find(x => x.id == id), t = timers[id];
+                if (!m || !t) return;
+                const max = medMaxDoses(m);
+                const rem = m.repeat && t.start && (max == null || t.count < max) ? Math.max(0, (m.repeat * 60000) - (now - t.start)) : 0; 
                 t.history.forEach((h, i) => {
                     const time = typeof h === 'string' ? h : h.time;
                     const dose = typeof h === 'string' ? '' : h.dose;
@@ -852,24 +1165,21 @@
                     label: typeLabel, 
                     time: time, 
                     type: (typeLabel.includes('Choque') || typeLabel.includes('Ritmo')) ? 'shock-pcr' : 'status-pcr', 
-                    timerHTML: typeLabel.includes('Choque') ? `<span class="font-black text-[10px] text-red-600">${typeLabel.includes('1º') ? Math.min(w*2, 200) : Math.min(w*4, 360)} J</span>` : '' 
+                    timerHTML: (typeof h === 'object' && h.joules) ? `<span class="font-black text-[10px] text-red-600">${h.joules} J</span>` : (typeLabel.includes('Choque Aplicado') ? `<span class="font-black text-[10px] text-red-600">${pcrShockEnergy(w, Math.max(0, (parseInt(typeLabel, 10) || 1) - 1))} J</span>` : '') 
                 });
             });
             
-            const doseTSV1 = Math.max(1, (w*1).toFixed(0));
-            const doseTSV2 = Math.max(2, (w*2).toFixed(0));
-
             tsvHistory.shock1.history.forEach(h => actions.push({ 
-                label: 'Cardioversão Sincronizada (1 J/kg)', 
+                label: 'Cardioversão sincronizada (1 J/kg)', 
                 time: typeof h === 'string' ? h : h.time, 
                 type: 'shock-pcr',
-                timerHTML: `<span class="font-black text-[10px] text-red-600">${doseTSV1} J</span>`
+                timerHTML: `<span class="font-black text-[10px] text-red-600">${(typeof h === 'object' && h.joules) ? h.joules : tsvJoules(w, 1)} J</span>`
             }));
             tsvHistory.shock2.history.forEach(h => actions.push({ 
-                label: 'Cardioversão Sincronizada (2 J/kg)', 
+                label: 'Cardioversão sincronizada (2 J/kg)', 
                 time: typeof h === 'string' ? h : h.time, 
                 type: 'shock-pcr',
-                timerHTML: `<span class="font-black text-[10px] text-red-600">${doseTSV2} J</span>`
+                timerHTML: `<span class="font-black text-[10px] text-red-600">${(typeof h === 'object' && h.joules) ? h.joules : tsvJoules(w, 2)} J</span>`
             }));
 
             actions.sort((a, b) => a.time === 'AGORA' ? -1 : (b.time === 'AGORA' ? 1 : b.time.localeCompare(a.time)));
@@ -884,17 +1194,20 @@
                     ${a.timerHTML || ''}
                 </div>`).join('');
             
-            modal.classList.remove('hidden');
+            showModal('history-modal');
         }
-        function closeHistory() { document.getElementById('history-modal').classList.add('hidden'); }
+        function closeHistory() { hideModal('history-modal'); }
         
         function initTabs() { 
             document.getElementById('tabs-container').innerHTML = tabsOrder.map(t => `<button onmousedown="tabStartX = event.screenX; tabStartY = event.screenY" ontouchstart="tabStartX = event.changedTouches[0].screenX; tabStartY = event.changedTouches[0].screenY" onclick="handleTabClick(event, '${t.id}')" class="tab-btn inactive" id="btn-${t.id}">${t.label}</button>`).join(''); 
         }
 
         function handleTabClick(e, tabId) {
-            let endX, endY; if (e.changedTouches) { endX = e.changedTouches[0].screenX; endY = e.changedTouches[0].screenY; } else { endX = e.screenX; endY = e.screenY; }
-            const deltaX = Math.abs(endX - tabStartX), deltaY = Math.abs(endY - tabStartY); if (deltaX < 10 && deltaY < 10) setTab(tabId);
+            let endX = e.screenX || 0, endY = e.screenY || 0;
+            if (e.changedTouches && e.changedTouches[0]) { endX = e.changedTouches[0].screenX; endY = e.changedTouches[0].screenY; }
+            if (!tabStartX && !tabStartY) { setTab(tabId); return; }
+            const deltaX = Math.abs(endX - tabStartX), deltaY = Math.abs(endY - tabStartY);
+            if (deltaX < 28 && deltaY < 28) setTab(tabId);
         }
 
         function setTab(tab) { 
@@ -916,12 +1229,12 @@
 
         function logDose(id) { 
             if (isMedBlocked(id)) return; 
-            const sc = pcrHistory.filter(h => h.type.includes('Choque')).length;
-            if (currentTab === 'pcr' && id === 25 && sc < 2) return;
-            if (currentTab === 'pcr' && id === 26 && sc < 3) return;
+            const sc = pcrShockCount();
+            if (metronomeActive && id === 1 && pcrRhythmType === 'shockable' && sc < 2) return;
+            if (metronomeActive && (id === 25 || id === 26) && sc < 3) return;
 
             if (id === 3) {
-                document.getElementById('push-dose-confirm-modal').classList.remove('hidden');
+                showModal('push-dose-confirm-modal');
                 return;
             }
             executeLogDose(id);
@@ -930,7 +1243,7 @@
         function executeLogDose(id) {
             const m = medData.find(x => x.id === id); 
             if (!timers[id]) timers[id] = { start: null, history: [], count: 0, dismissed: false }; 
-            const max = m.repeat ? (m.maxDoses || null) : 1; 
+            const max = medMaxDoses(m); 
             if (max && timers[id].count >= max) return; 
             
             const defVal = typeof m.defaultMgKg === 'function' ? m.defaultMgKg(currentWeight) : (m.defaultMgKg !== undefined ? m.defaultMgKg : 0);
@@ -960,24 +1273,52 @@
         }
 
         function confirmPushDose() {
-            document.getElementById('push-dose-confirm-modal').classList.add('hidden');
+            hideModal('push-dose-confirm-modal');
             executeLogDose(3);
         }
         
+        function showTsvSafety(mode, type) {
+            const title = document.getElementById('tsv-safety-title');
+            const text = document.getElementById('tsv-safety-text');
+            const proceed = document.getElementById('tsv-safety-proceed');
+            if (mode === 'sync') {
+                pendingTsvShock = null;
+                title.innerText = 'Sync obrigatório';
+                text.innerHTML = 'Ligue o <strong class="text-red-600">Sync</strong> e confirme que ele marca o QRS antes do choque. Sem sincronismo a cardioversão pode disparar FV.';
+                proceed.classList.add('hidden');
+            } else {
+                pendingTsvShock = type;
+                title.innerText = 'Sedação';
+                text.innerHTML = 'Se der tempo e o paciente estiver estável, sedar antes. Se estiver instável, <strong class="text-red-600">não atrase</strong> a cardioversão.';
+                proceed.classList.remove('hidden');
+            }
+            showModal('tsv-safety-modal');
+        }
+
+        function confirmTsvShockAnyway() {
+            const type = pendingTsvShock;
+            pendingTsvShock = null;
+            hideModal('tsv-safety-modal');
+            if (type) executeTsvShock(type);
+        }
+
+        function executeTsvShock(type) {
+            const shock = tsvHistory[type];
+            const limit = type === 'shock1' ? 1 : 3;
+            if (shock.history.length >= limit) return;
+            shock.history.unshift({ time: getCurrentTime(), joules: tsvJoules(currentWeight, type === 'shock1' ? 1 : 2) });
+            saveToStorage(); render(); updateActivityMonitor();
+        }
+
         function logShock(tab, type) { 
-            const t = getCurrentTime();
             if(tab === 'pcr') { 
-                if (pcrShockAppliedInCycle) return; 
-                applyShockFromModal();
+                if (!pcrCheckingRhythm) return;
+                openShockDoseModal();
             } else if(tab === 'tsv') { 
                 const shock = tsvHistory[type];
-                if (!shock.sedated || !shock.synced) {
-                    document.getElementById('tsv-safety-modal').classList.remove('hidden');
-                    return;
-                }
-                if (shock.history.length >= (type === 'shock1' ? 1 : 3)) return; 
-                shock.history.unshift(t); 
-                saveToStorage(); render(); updateActivityMonitor();
+                if (!shock.synced) { showTsvSafety('sync'); return; }
+                if (!shock.sedated) { showTsvSafety('sedation', type); return; }
+                executeTsvShock(type);
             } 
         }
 
@@ -988,7 +1329,7 @@
             if (!metronomeActive) {
                 pcrCycleCount = 1; htModalTriggeredInCycle2 = false; 
                 document.getElementById('rhythm-modal-title').innerText = "Iniciar RCP (1º Ciclo)";
-                document.getElementById('pcr-rhythm-selection-modal').classList.remove('hidden');
+                showModal('pcr-rhythm-selection-modal');
             } else {
                 metronomeActive = false; pcrShockTimerStart = null; pcrCycleAlertTriggered = false; pcrCheckingRhythm = false; pcrCycleCount = 1; pcrRhythmType = null;
                 pcrShockAppliedInCycle = false; htModalTriggeredInCycle2 = false; clearInterval(metronomeInterval); metronomeInterval = null;
@@ -997,48 +1338,62 @@
             }
         }
 
-        function closeRhythmSelection() { document.getElementById('pcr-rhythm-selection-modal').classList.add('hidden'); }
+        function closeRhythmSelection() { hideModal('pcr-rhythm-selection-modal'); }
         function openRhythmSelectionFromAlert() {
             closePcrCycleAlert();
             document.getElementById('rhythm-modal-title').innerText = `Checagem (Ciclo ${pcrCycleCount})`;
-            document.getElementById('pcr-rhythm-selection-modal').classList.remove('hidden');
+            showModal('pcr-rhythm-selection-modal');
+        }
+
+        function arrestIsOpen() {
+            const startIdx = pcrHistory.findIndex(h => h && h.type === 'INÍCIO RCP');
+            const endIdx = pcrHistory.findIndex(h => h && h.type === 'FIM RCP');
+            if (startIdx === -1) return false;
+            if (endIdx === -1) return true;
+            return startIdx < endIdx;
+        }
+
+        function openShockDoseModal() {
+            const sc = pcrShockCount();
+            const dose = pcrShockEnergy(currentWeight, sc);
+            document.getElementById('shock-dose-value').innerText = dose;
+            document.getElementById('shock-dose-subtitle').innerText = `${sc + 1}º choque · teto 10 J/kg ou 200 J`;
+            showModal('shock-dose-modal');
         }
 
         function confirmPcrStart(type) {
             const time = getCurrentTime();
             closeRhythmSelection();
             if (type === 'shockable') {
-                const w = currentWeight;
-                const sc = pcrHistory.filter(h => h.type.includes('Choque')).length;
-                const dose = sc === 0 ? Math.min(w*2, 200) : Math.min(w*4, 360);
-                pcrHistory.unshift({ type: `Identificado Ritmo Chocável (FV/TV)`, time: time });
-                document.getElementById('shock-dose-value').innerText = dose;
-                document.getElementById('shock-dose-subtitle').innerText = `${sc + 1}º Choque sugerido`;
-                document.getElementById('shock-dose-modal').classList.remove('hidden');
+                pcrHistory.unshift({ type: 'Identificado Ritmo Chocável (FV/TV)', time: time });
+                openShockDoseModal();
                 return;
             }
             if (type === 'non-shockable') {
-                document.getElementById('pulse-check-modal').classList.remove('hidden');
+                showModal('pulse-check-modal');
                 return;
             }
         }
 
         function applyShockFromModal() {
             const time = getCurrentTime();
-            const sc = pcrHistory.filter(h => h.type.includes('Choque')).length + 1;
-            pcrHistory.unshift({ type: `${sc}º Choque Aplicado`, time: time });
-            pcrShockAppliedInCycle = true;
+            const prior = pcrShockCount();
+            const joules = pcrShockEnergy(currentWeight, prior);
+            pcrHistory.unshift({ type: `${prior + 1}º Choque Aplicado`, time: time, joules: joules });
             pcrRhythmType = 'shockable';
             closeShockDoseModal();
+            closePcrCycleAlert();
+            closeRhythmSelection();
             startNewCycleAfterCheck('shockable');
         }
 
         function processPulseCheck(hasPulse) {
-            document.getElementById('pulse-check-modal').classList.add('hidden'); 
+            hideModal('pulse-check-modal'); 
             const time = getCurrentTime();
             if (hasPulse) { 
                 pcrHistory.unshift({ type: 'ROSC / PULSO PRESENTE', time: time }); 
-                togglePcrStatus(); 
+                if (metronomeActive) togglePcrStatus();
+                else { saveToStorage(); render(); }
             } else { 
                 pcrHistory.unshift({ type: 'Identificado AESP/Assistolia (Sem Pulso - Retomando RCP)', time: time }); 
                 startNewCycleAfterCheck('non-shockable');
@@ -1046,13 +1401,14 @@
         }
 
         function startNewCycleAfterCheck(rhythmType) {
+            const continuing = arrestIsOpen();
             pcrRhythmType = rhythmType; 
             metronomeActive = true; 
             pcrShockTimerStart = Date.now(); 
             pcrCycleAlertTriggered = false; 
             pcrCheckingRhythm = false; 
-            pcrShockAppliedInCycle = false;
-            pcrCycleCount++;
+            pcrShockAppliedInCycle = (rhythmType === 'shockable');
+            pcrCycleCount = continuing ? pcrCycleCount + 1 : 1;
             
             if (!metronomeInterval) metronomeInterval = setInterval(playMetronomeTick, 545);
             playMetronomeTick();
@@ -1066,7 +1422,7 @@
                 }, 10000);
             }
 
-            if (!pcrHistory.some(h => h.type === 'INÍCIO RCP')) { 
+            if (!continuing) { 
                 pcrHistory.unshift({ type: 'INÍCIO RCP', time: getCurrentTime() }); 
             }
             saveToStorage(); render();
@@ -1097,22 +1453,25 @@
         }
         
         function toggleMetronomeSound() { metronomeSoundEnabled = !metronomeSoundEnabled; saveToStorage(); render(); }
-        function showPcrCycleAlert() { pcrCheckingRhythm = true; checkingStartTime = Date.now(); document.getElementById('pcr-cycle-alert-modal').classList.remove('hidden'); }
-        function closePcrCycleAlert() { pcrCheckingRhythm = false; checkingStartTime = null; document.getElementById('pcr-cycle-alert-modal').classList.add('hidden'); }
+        function showPcrCycleAlert() { pcrCheckingRhythm = true; pcrShockAppliedInCycle = false; checkingStartTime = Date.now(); showModal('pcr-cycle-alert-modal'); render(); }
+        function closePcrCycleAlert() { pcrCheckingRhythm = false; checkingStartTime = null; hideModal('pcr-cycle-alert-modal'); }
         
         function dismissAlert(id) { if (timers[id]) { timers[id].dismissed = true; hideAlert(); saveToStorage(); render(); updateActivityMonitor(); } }
         function hideAlert() { const b = document.getElementById('global-alert-container'); b.classList.add('opacity-0', 'scale-95', 'invisible'); b.classList.remove('opacity-100', 'scale-100'); }
         function goToMed(id) { const m = medData.find(x => x.id === id); if (!m) return; expandedMeds[id] = true; const t = m.tabs.includes(currentTab) ? currentTab : m.tabs[0]; setTab(t); setTimeout(() => { const c = document.getElementById(`med-${id}`); if (c) { window.scrollTo({ top: c.offsetTop - (document.getElementById('app-header').offsetHeight + 120), behavior: 'smooth' }); c.classList.add('ring-4', 'ring-blue-500/30'); setTimeout(() => c.classList.remove('ring-4', 'ring-blue-500/30'), 2000); } }, 100); }
         
         function generateActiveMedsHTML() {
+            normalizeSession();
             const now = Date.now(); let h = '';
             const w = currentWeight;
-            pcrHistory.filter(x => x.type.includes('Choque')).slice(0, 2).forEach(s => h += `<div class="flex-shrink-0 flex flex-col items-start p-3 rounded-2xl border bg-red-600 text-white min-w-[110px] shadow-sm"><span class="text-[7px] font-black uppercase tracking-tighter opacity-80 mb-1 leading-none">Aplicado</span><div class="flex items-center w-full justify-between leading-none"><span class="text-[12px] font-black uppercase">${s.type}</span><span class="font-mono ml-2 font-black">⚡</span></div></div>`);
+            pcrHistory.filter(x => x && x.type && x.type.includes('Choque Aplicado')).slice(0, 2).forEach(s => h += `<div class="flex-shrink-0 flex flex-col items-start p-3 rounded-2xl border bg-red-600 text-white min-w-[110px] shadow-sm"><span class="text-[7px] font-black uppercase tracking-tighter opacity-80 mb-1 leading-none">Aplicado</span><div class="flex items-center w-full justify-between leading-none"><span class="text-[12px] font-black uppercase">${s.type}</span><span class="font-mono ml-2 font-black">⚡</span></div></div>`);
             if (tsvHistory.shock1.history.length > 0) h += `<div class="flex-shrink-0 flex flex-col items-start p-3 rounded-2xl border bg-blue-600 text-white min-w-[110px] shadow-sm"><span class="text-[7px] font-black uppercase tracking-tighter opacity-80 mb-1 leading-none">Aplicado</span><div class="flex items-center w-full justify-between leading-none"><span class="text-[12px] font-black uppercase">Cardio 1J</span><span class="font-mono ml-2 font-black">⚡</span></div></div>`;
             if (tsvHistory.shock2.history.length > 0) h += `<div class="flex-shrink-0 flex flex-col items-start p-3 rounded-2xl border bg-indigo-600 text-white min-w-[110px] shadow-sm"><span class="text-[7px] font-black uppercase tracking-tighter opacity-80 mb-1 leading-none">Aplicado</span><div class="flex items-center w-full justify-between leading-none"><span class="text-[12px] font-black uppercase">Cardio 2J</span><span class="font-mono ml-2 font-black">⚡</span></div></div>`;
             if (pcrShockTimerStart) { const r = Math.max(0, 120000 - (now - pcrShockTimerStart)), m = Math.floor(r/60000), s = Math.floor((r%60000)/1000); h += `<button onclick="setTab('pcr')" class="flex-shrink-0 flex flex-col items-start p-3 rounded-2xl border ${r === 0 ? 'bg-red-600 text-white animate-pulse' : 'bg-red-50 text-red-700 border-red-200'} min-w-[110px] shadow-sm active:scale-95"><span class="text-[7px] font-black uppercase mb-1 leading-none">Checagem</span><div class="flex items-center w-full justify-between leading-none"><span class="text-[9px] font-black uppercase">${r === 0 ? 'AGORA' : 'Restam'}</span><span data-am-pcr-timer class="font-mono ml-2 font-black">${m}:${s.toString().padStart(2,'0')}</span></div></button>`; }
-            Object.keys(timers).filter(id => timers[id].count > 0).forEach(id => { 
-                const mObj = medData.find(x => x.id == id), t = timers[id], max = mObj.repeat ? (mObj.maxDoses || null) : 1, reached = max && t.count >= max; 
+            Object.keys(timers).filter(id => timers[id] && timers[id].count > 0).forEach(id => { 
+                const mObj = medData.find(x => x.id == id), t = timers[id];
+                if (!mObj || !t) return;
+                const max = medMaxDoses(mObj), reached = max && t.count >= max; 
                 let txt = "Aplicado", col = "bg-emerald-100 text-emerald-700 border-emerald-200", dis = ""; 
                 if (mObj.repeat && t.start && !reached) { 
                     const r = Math.max(0, (mObj.repeat * 60000) - (now - t.start)); 
@@ -1142,7 +1501,7 @@
 
             const ml = typeof m.doseML === 'function' ? m.doseML(w, a, c, activeDose) : m.doseML;
             const ms = typeof m.doseMass === 'function' ? m.doseMass(w, a, c, activeDose) : (m.doseMass || "---");
-            const max = m.repeat ? (m.maxDoses || null) : 1, reached = max && c >= max;
+            const max = medMaxDoses(m), reached = max && c >= max;
             const r = (m.repeat && t?.start) ? Math.max(0, (m.repeat * 60000) - (Date.now() - t.start)) : 0;
             const isExpanded = expandedMeds[m.id];
 
@@ -1192,11 +1551,11 @@
                         </div>
                     </div>
                     ${m.bic ? `<div class="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 text-[11px] text-slate-700 font-bold leading-tight"><span class="text-[9px] font-black text-blue-800 uppercase block mb-1">⚙️ Preparo BIC:</span>${m.bic.formula(w, activeDose)}</div>` : ''}
-                    ${m.obsHighlight ? `<div class="mt-3 p-3 bg-red-600 rounded-2xl text-[10px] text-white font-black shadow-md flex gap-2 items-center"><span class="text-lg">⚠️</span> <span>${m.obsHighlight}</span></div>` : ''}
+                    ${(typeof m.obsHighlight === 'function' ? m.obsHighlight(w, a) : m.obsHighlight) ? `<div class="mt-3 p-3 bg-red-600 rounded-2xl text-[10px] text-white font-black shadow-md flex gap-2 items-center"><span class="text-lg">⚠️</span> <span>${typeof m.obsHighlight === 'function' ? m.obsHighlight(w, a) : m.obsHighlight}</span></div>` : ''}
                     <div class="timer-box mt-4 p-4 bg-slate-50 rounded-3xl border border-slate-100 transition-colors">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex flex-col">
-                                ${m.repeat ? `<span class="text-[8px] font-black text-slate-400 uppercase mb-1">Próxima Dose</span><span class="text-2xl font-black tabular-nums ${reached ? 'text-slate-200' : 'text-slate-800'}" data-tid="${m.id}" data-interval="${m.repeat}">--:--</span>` : `<span class="text-[8px] font-black text-slate-400 uppercase mb-1">Registro</span><span class="text-sm font-black text-slate-500 uppercase">${reached ? 'Dose Aplicada' : 'Aplicação Única'}</span>`}
+                                ${m.repeat ? `<span class="text-[8px] font-black text-slate-400 uppercase mb-1">Próxima Dose</span><span class="text-2xl font-black tabular-nums ${reached ? 'text-slate-200' : 'text-slate-800'}" data-tid="${m.id}" data-interval="${m.repeat}">--:--</span>` : `<span class="text-[8px] font-black text-slate-400 uppercase mb-1">Registro</span><span class="text-sm font-black text-slate-500 uppercase">${reached ? 'Dose Aplicada' : (m.unlimited ? 'Repetir após reavaliar' : 'Aplicação Única')}</span>`}
                             </div>
                             <div class="text-[10px] font-black text-slate-700 uppercase">Doses: ${c} ${max ? `/ ${max}` : ''}</div>
                         </div>
@@ -1208,7 +1567,7 @@
                                     return `<div class="bg-blue-100 text-blue-700 text-[9px] px-2 py-1 rounded-lg font-black flex justify-between items-center"><div class="flex flex-col"><span>Dose ${t.history.length - i}</span>${dose ? `<span class="text-[8px] font-medium opacity-80">${dose}</span>` : ''}</div><span>${time}</span></div>`;
                                 }).join('') || '<div class="text-[9px] text-slate-300 italic p-1">Nenhum registro</div>'}
                             </div>
-                            <button onclick="logDose(${m.id})" ${reached || r > 0 ? 'disabled' : ''} class="h-12 px-6 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95 disabled:opacity-20">${reached ? 'APLICADO' : (r > 0 ? 'BLOQUEADO' : 'Fazer Dose')}</button>
+                            <button onclick="logDose(${m.id})" ${reached || r > 0 ? 'disabled' : ''} class="h-12 px-6 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95 disabled:opacity-20">${reached ? 'APLICADO' : (r > 0 ? 'BLOQUEADO' : (m.actionLabel || 'Fazer Dose'))}</button>
                         </div>
                     </div>
                 </div>
@@ -1216,8 +1575,9 @@
         }
 
         function render() {
+            normalizeSession();
             const w = currentWeight, a = currentAge, c = document.getElementById('content'), v = getVitals(w, a);
-            document.getElementById('vitalLabel').innerText = v.label; document.getElementById('vitalFC').innerText = v.fc; document.getElementById('vitalFR').innerText = v.fr; document.getElementById('vitalPAS').innerText = `> ${v.pas}`;
+            document.getElementById('vitalLabel').innerText = v.label; document.getElementById('vitalFC').innerText = v.fc; document.getElementById('vitalFR').innerText = v.fr; document.getElementById('vitalPAS').innerText = `≥ ${v.pas}`;
             let h = "";
             if (currentTab === 'equipamentos' || currentTab === 'todos') { 
                 const eq = getEq(w, a); 
@@ -1228,12 +1588,12 @@
                 h += `<div class="space-y-4"><div class="bg-blue-900 p-6 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden"><div class="absolute top-0 right-0 p-4 opacity-10 text-4xl">🫁</div><h3 class="text-xs font-black uppercase tracking-widest mb-4 border-b border-white/20 pb-2 text-blue-300">Ajustes Iniciais Padrão</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-6"><div class="space-y-3"><p class="text-[10px] font-black uppercase bg-blue-800 px-3 py-1 rounded-lg w-fit">Modo VCV (Volume)</p><div class="grid grid-cols-2 gap-2 text-sm"><div><p class="text-[8px] uppercase opacity-60">VC (6-8ml/kg)</p><p class="font-black">${vt} ml</p></div><div><p class="text-[8px] uppercase opacity-60">Fluxo</p><p class="font-black">Onda Quadrada</p></div></div></div><div class="space-y-3"><p class="text-[10px] font-black uppercase bg-blue-700 px-3 py-1 rounded-lg w-fit">Modo PCV (Pressão)</p><div class="grid grid-cols-2 gap-2 text-sm"><div><p class="text-[8px] uppercase opacity-60">P. Insp.</p><p class="font-black">15-20 cmH2O</p></div><div><p class="text-[8px] uppercase opacity-60">Alvo de VC</p><p class="font-black">${vt} ml</p></div></div></div></div><div class="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/10 text-center"><div><p class="text-[8px] uppercase opacity-60">FR</p><p class="text-sm font-black">${fr} ipm</p></div><div><p class="text-[8px] uppercase opacity-60">T. Insp.</p><p class="text-sm font-black">${ti} s</p></div><div><p class="text-[8px] uppercase opacity-60">PEEP</p><p class="text-sm font-black">5 cmH2O</p></div></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px]">${[{ t: '🟢 Protetora (SARA)', c: 'emerald-600', m: 'PCV ou VCV', l: [`VC: 6 ml/kg`, `PEEP: 8-10`, `FR: ${fr}`, `FiO2: < 60%`] }, { t: '🟠 Obstrutiva (Asma)', c: 'orange-600', m: 'VCV', l: [`VC: 6-8 ml/kg`, `PEEP: 0-3`, `FR: 10-14`, `Rel. I:E: 1:4`] }, { t: '🔵 Neuro (HIC)', c: 'purple-600', m: 'PCV ou VCV', l: [`Alvo PaCO2: 35-38`, `PEEP: 5`, `FR: Ajustar`, `Cabeceira: 30-45º`] }, { t: '🟡 Choque', c: 'blue-600', m: 'PCV', l: [`Evitar Altas Pressões`, `PEEP: 5`, `FR: Padrão`, `Sedar/Bloquear`] }].map(x => `<div class="bg-white p-5 rounded-3xl border border-slate-100 card-shadow"><div class="flex justify-between items-start mb-3"><h4 class="font-black text-${x.c} uppercase">${x.t}</h4><span class="bg-slate-100 text-[8px] px-2 py-0.5 rounded-md font-bold text-slate-500">${x.m}</span></div><ul class="space-y-1.5 font-bold text-slate-600">${x.l.map(li => `<li class="flex items-center gap-2 border-b border-slate-50 pb-1"><span class="w-1 h-1 rounded-full bg-slate-300"></span>${li}</li>`).join('')}</ul></div>`).join('')}</div></div>`; 
             }
             if (currentTab === 'pcr' || currentTab === 'todos') {
-                const sc = pcrHistory.filter(h => h.type.includes('Choque')).length, ad = medData.find(x => x.id === 1), am = medData.find(x => x.id === 25), li = medData.find(x => x.id === 26), gm = (x) => typeof x.doseML === 'function' ? x.doseML(w, a, timers[x.id]?.count || 0, customDoseOverrides[x.id] !== undefined ? customDoseOverrides[x.id] : (typeof x.defaultMgKg === 'function' ? x.defaultMgKg(w) : x.defaultMgKg)) : x.doseML, sa = !pcrRhythmType || pcrRhythmType === 'shockable', na = !pcrRhythmType || pcrRhythmType === 'non-shockable', adBlocked = isMedBlocked(1), amBlocked = isMedBlocked(25), liBlocked = isMedBlocked(26), shockLabel = sc === 0 ? `1º Choque (${Math.min(w*2,200)}J)` : `Choque Subseq. (${Math.min(w*4,360)}J)`, pcrActive = metronomeActive;
+                const sc = pcrShockCount(), ad = medData.find(x => x.id === 1), am = medData.find(x => x.id === 25), li = medData.find(x => x.id === 26), gm = (x) => typeof x.doseML === 'function' ? x.doseML(w, a, timers[x.id]?.count || 0, customDoseOverrides[x.id] !== undefined ? customDoseOverrides[x.id] : (typeof x.defaultMgKg === 'function' ? x.defaultMgKg(w) : x.defaultMgKg)) : x.doseML, sa = !pcrRhythmType || pcrRhythmType === 'shockable', na = !pcrRhythmType || pcrRhythmType === 'non-shockable', adBlocked = isMedBlocked(1), amBlocked = isMedBlocked(25), liBlocked = isMedBlocked(26), nextJ = pcrShockEnergy(w, sc), shockLabel = pcrCheckingRhythm ? `Choque agora: ${nextJ} J` : `No check: ${nextJ} J`, epiShockGated = sc < 2, pcrActive = metronomeActive;
                 
-                const amioShockBlocked = sc < 2;
+                const amioShockBlocked = sc < 3;
                 const lidoShockBlocked = sc < 3;
 
-                h += `<div class="space-y-4"><div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow overflow-hidden"><div class="flex items-center justify-between mb-4 border-b border-slate-50 pb-4"><div class="flex items-center gap-4"><div id="metro-dot" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center transition-all"><span class="text-2xl">🫀</span></div><div><h3 class="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Qualidade da RCP</h3><p class="text-[12px] font-bold text-blue-600">110 bpm • Ciclo: ${pcrCycleCount}</p></div></div><div class="no-print flex gap-2 items-center"><button onclick="toggleMetronomeSound()" class="w-12 h-12 flex items-center justify-center rounded-2xl border ${metronomeSoundEnabled ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-slate-50 border-slate-200 text-slate-300'}">${metronomeSoundEnabled ? '🔊' : '🔇'}</button><button onclick="togglePcrStatus()" class="px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all ${metronomeActive ? 'bg-red-900 text-white text-[10px]' : 'bg-red-600 text-white btn-pcr-pulse py-5 px-8 text-[12px]'}">${metronomeActive ? 'Encerrar RCP' : 'Iniciar RCP'}</button></div></div><div class="mb-6"><div class="flex justify-between items-center px-1"><span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tempo de Ciclo</span><span id="pcr-cycle-label" class="text-[8px] font-black text-slate-400">---</span></div><div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden"><div id="pcr-cycle-progress" class="h-full bg-blue-500 transition-all duration-1000" style="width: 0%"></div></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4 ${!pcrActive ? 'hidden' : 'transition-all duration-500 animate-in fade-in slide-in-from-top-4'}"><div class="bg-red-50 p-4 rounded-3xl border border-red-100 space-y-3 ${!sa ? 'opacity-30 grayscale pointer-events-none' : ''} transition-all"><div class="flex justify-between items-center border-b border-red-200 pb-2"><span class="text-[10px] font-black text-red-700 uppercase">Chocáveis - FV/TV</span><span class="text-[9px] font-bold text-red-400">⚡ 2-4-10 J/kg</span></div><button onclick="logShock('pcr')" ${pcrShockAppliedInCycle ? 'disabled' : ''} class="w-full p-3 rounded-2xl font-black text-[9px] uppercase shadow-sm transition-all ${pcrShockAppliedInCycle ? 'btn-pcr-disabled' : (sc === 0 ? 'bg-white text-red-700 border border-red-200' : 'bg-red-600 text-white')} active:scale-95">${pcrShockAppliedInCycle ? 'CHOQUE APLICADO' : shockLabel}</button><button onclick="logDose(1)" ${adBlocked ? 'disabled' : ''} class="w-full bg-white border border-red-200 p-3 rounded-2xl flex justify-between items-center active:scale-95 ${adBlocked ? 'btn-pcr-disabled' : ''}"><div class="flex flex-col text-left"><span class="text-[8px] font-black text-red-400 uppercase">Dose Imediata</span><span class="text-[10px] font-black text-red-700 uppercase">Adrenalina: ${gm(ad)}ml</span></div><span class="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[8px] font-black">${adBlocked ? 'AGUARDAR' : 'APLICAR'}</span></button><button onclick="logDose(25)" ${amBlocked || amioShockBlocked ? 'disabled' : ''} class="w-full bg-white border border-red-200 p-3 rounded-2xl flex justify-between items-center active:scale-95 ${amBlocked || amioShockBlocked ? 'btn-pcr-disabled' : ''}"><div class="flex flex-col text-left"><span class="text-[8px] font-black text-red-400 uppercase">Após 2º Choque</span><span class="text-[10px] font-black text-red-700 uppercase">Amiodarona: ${gm(am)}ml</span></div><span class="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[8px] font-black">${amioShockBlocked ? 'AGUARDAR 2º CHOQUE' : (amBlocked ? 'AGUARDAR' : 'APLICAR')}</span></button><button onclick="logDose(26)" ${liBlocked || lidoShockBlocked ? 'disabled' : ''} class="w-full bg-white border border-red-200 p-3 rounded-2xl flex justify-between items-center active:scale-95 ${liBlocked || lidoShockBlocked ? 'btn-pcr-disabled' : ''}"><div class="flex flex-col text-left"><span class="text-[8px] font-black text-red-400 uppercase">Após 3º Choque</span><span class="text-[10px] font-black text-red-700 uppercase">Lidocaína: ${gm(li)}ml</span></div><span class="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[8px] font-black">${lidoShockBlocked ? 'AGUARDAR 3º CHOQUE' : (liBlocked ? 'AGUARDAR' : 'APLICAR')}</span></button></div><div class="bg-blue-50 p-4 rounded-3xl border border-blue-100 space-y-3 ${!na ? 'opacity-30 grayscale pointer-events-none' : ''} transition-all"><div class="flex justify-between items-center border-b border-blue-200 pb-2"><span class="text-[10px] font-black text-blue-700 uppercase">AESP / ASSIST.</span><span class="text-[9px] font-bold text-blue-400">💉 Imediato</span></div><button onclick="logDose(1)" ${adBlocked ? 'disabled' : ''} class="w-full bg-white border border-blue-200 p-5 rounded-2xl flex justify-between items-center active:scale-95 ${adBlocked ? 'btn-pcr-disabled' : ''}"><div class="flex flex-col text-left"><span class="text-[9px] font-black text-blue-400 uppercase">Adrenalina o mais rápido</span><span class="text-[12px] font-black text-blue-800 uppercase">${gm(ad)}ml</span></div><span class="${adBlocked ? 'bg-slate-400' : 'bg-blue-600'} text-white px-3 py-1.5 rounded-xl text-[9px] font-black">${adBlocked ? 'AGUARDAR' : 'APLICAR'}</span></button></div></div></div>${pcrCycleCount > 1 ? `<div onclick="openHTModal()" class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow animate-in slide-in-from-bottom duration-500 cursor-pointer"><div class="flex justify-between items-center mb-4 border-b border-blue-50 pb-2"><h3 class="text-[10px] font-black text-blue-800 uppercase tracking-widest">🔍 Causas Reversíveis (5Hs e 5Ts)</h3><span class="text-[10px] font-black text-blue-500 uppercase">Ver Detalhes ❯</span></div><div class="grid grid-cols-2 gap-4"><div><p class="text-[9px] font-black text-blue-600 uppercase mb-2">5 Hs</p><ul class="text-[10px] font-bold text-slate-600 space-y-1"><li>• Hipovolemia</li><li>• Hipóxia</li><li>• Acidose</li><li>• Hipo/Hiper K</li><li>• Hipotermia</li></ul></div><div><p class="text-[9px] font-black text-blue-600 uppercase mb-2">5 Ts</p><ul class="text-[10px] font-bold text-slate-600 space-y-1"><li>• Pneumotórax</li><li>• Tamponamento</li><li>• Toxinas</li><li>• T. Pulmonar</li><li>• T. Coronária</li></ul></div></div></div>` : ''}</div>`; 
+                h += `<div class="space-y-4"><div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow overflow-hidden"><div class="flex items-center justify-between mb-4 border-b border-slate-50 pb-4"><div class="flex items-center gap-4"><div id="metro-dot" class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center transition-all"><span class="text-2xl">🫀</span></div><div><h3 class="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">Qualidade da RCP</h3><p class="text-[12px] font-bold text-blue-600">110 bpm • Ciclo: ${pcrCycleCount}</p><p class="text-[9px] font-bold text-slate-500 leading-tight mt-1">Sem tubo: 15:2 (30:2 se 1 socorrista ou pós-púbere). Com tubo: 1 sopro a cada 2–3 s, sem parar.</p></div></div><div class="no-print flex gap-2 items-center"><button onclick="toggleMetronomeSound()" class="w-12 h-12 flex items-center justify-center rounded-2xl border ${metronomeSoundEnabled ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-slate-50 border-slate-200 text-slate-300'}">${metronomeSoundEnabled ? '🔊' : '🔇'}</button><button onclick="togglePcrStatus()" class="px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all ${metronomeActive ? 'bg-red-900 text-white text-[10px]' : 'bg-red-600 text-white btn-pcr-pulse py-5 px-8 text-[12px]'}">${metronomeActive ? 'Encerrar RCP' : 'Iniciar RCP'}</button></div></div><div class="mb-6"><div class="flex justify-between items-center px-1"><span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tempo de Ciclo</span><span id="pcr-cycle-label" class="text-[8px] font-black text-slate-400">---</span></div><div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden"><div id="pcr-cycle-progress" class="h-full bg-blue-500 transition-all duration-1000" style="width: 0%"></div></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4 ${!pcrActive ? 'hidden' : 'transition-all duration-500 animate-in fade-in slide-in-from-top-4'}"><div class="bg-red-50 p-4 rounded-3xl border border-red-100 space-y-3 ${!sa ? 'opacity-30 grayscale pointer-events-none' : ''} transition-all"><div class="flex justify-between items-center border-b border-red-200 pb-2"><span class="text-[10px] font-black text-red-700 uppercase">Chocáveis - FV/TV</span><span class="text-[9px] font-bold text-red-400">⚡ 2→4→10 J/kg · teto 200 J</span></div><button onclick="logShock('pcr')" ${!pcrCheckingRhythm ? 'disabled' : ''} class="w-full p-3 rounded-2xl font-black text-[9px] uppercase shadow-sm transition-all ${!pcrCheckingRhythm ? 'btn-pcr-disabled' : 'bg-red-600 text-white'} active:scale-95">${shockLabel}</button><button onclick="logDose(1)" ${adBlocked || epiShockGated ? 'disabled' : ''} class="w-full bg-white border border-red-200 p-3 rounded-2xl flex justify-between items-center active:scale-95 ${adBlocked || epiShockGated ? 'btn-pcr-disabled' : ''}"><div class="flex flex-col text-left"><span class="text-[8px] font-black text-red-400 uppercase">${epiShockGated ? 'Após 2º choque' : 'A cada 3-5 min'}</span><span class="text-[10px] font-black text-red-700 uppercase">Adrenalina: ${gm(ad)}ml</span></div><span class="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[8px] font-black">${epiShockGated ? 'APÓS 2º' : (adBlocked ? 'AGUARDAR' : 'APLICAR')}</span></button><button onclick="logDose(25)" ${amBlocked || amioShockBlocked ? 'disabled' : ''} class="w-full bg-white border border-red-200 p-3 rounded-2xl flex justify-between items-center active:scale-95 ${amBlocked || amioShockBlocked ? 'btn-pcr-disabled' : ''}"><div class="flex flex-col text-left"><span class="text-[8px] font-black text-red-400 uppercase">Após 3º choque — ou lidocaína</span><span class="text-[10px] font-black text-red-700 uppercase">Amiodarona: ${gm(am)}ml</span></div><span class="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[8px] font-black">${amioShockBlocked ? 'APÓS 3º CHOQUE' : (amBlocked ? 'AGUARDAR' : 'APLICAR')}</span></button><button onclick="logDose(26)" ${liBlocked || lidoShockBlocked ? 'disabled' : ''} class="w-full bg-white border border-red-200 p-3 rounded-2xl flex justify-between items-center active:scale-95 ${liBlocked || lidoShockBlocked ? 'btn-pcr-disabled' : ''}"><div class="flex flex-col text-left"><span class="text-[8px] font-black text-red-400 uppercase">Alternativa à amiodarona</span><span class="text-[10px] font-black text-red-700 uppercase">Lidocaína: ${gm(li)}ml</span></div><span class="bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[8px] font-black">${lidoShockBlocked ? 'APÓS 3º CHOQUE' : (liBlocked ? 'AGUARDAR' : 'APLICAR')}</span></button></div><div class="bg-blue-50 p-4 rounded-3xl border border-blue-100 space-y-3 ${!na ? 'opacity-30 grayscale pointer-events-none' : ''} transition-all"><div class="flex justify-between items-center border-b border-blue-200 pb-2"><span class="text-[10px] font-black text-blue-700 uppercase">AESP / ASSIST.</span><span class="text-[9px] font-bold text-blue-400">💉 Imediato</span></div><button onclick="logDose(1)" ${adBlocked ? 'disabled' : ''} class="w-full bg-white border border-blue-200 p-5 rounded-2xl flex justify-between items-center active:scale-95 ${adBlocked ? 'btn-pcr-disabled' : ''}"><div class="flex flex-col text-left"><span class="text-[9px] font-black text-blue-400 uppercase">Adrenalina o mais rápido</span><span class="text-[12px] font-black text-blue-800 uppercase">${gm(ad)}ml</span></div><span class="${adBlocked ? 'bg-slate-400' : 'bg-blue-600'} text-white px-3 py-1.5 rounded-xl text-[9px] font-black">${adBlocked ? 'AGUARDAR' : 'APLICAR'}</span></button></div></div></div>${pcrCycleCount > 1 ? `<div onclick="openHTModal()" class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow animate-in slide-in-from-bottom duration-500 cursor-pointer"><div class="flex justify-between items-center mb-4 border-b border-blue-50 pb-2"><h3 class="text-[10px] font-black text-blue-800 uppercase tracking-widest">🔍 Causas Reversíveis (5Hs e 5Ts)</h3><span class="text-[10px] font-black text-blue-500 uppercase">Ver Detalhes ❯</span></div><div class="grid grid-cols-2 gap-4"><div><p class="text-[9px] font-black text-blue-600 uppercase mb-2">5 Hs</p><ul class="text-[10px] font-bold text-slate-600 space-y-1"><li>• Hipovolemia</li><li>• Hipóxia</li><li>• Acidose</li><li>• Hipo/Hiper K</li><li>• Hipotermia</li></ul></div><div><p class="text-[9px] font-black text-blue-600 uppercase mb-2">5 Ts</p><ul class="text-[10px] font-bold text-slate-600 space-y-1"><li>• Pneumotórax</li><li>• Tamponamento</li><li>• Toxinas</li><li>• T. Pulmonar</li><li>• T. Coronária</li></ul></div></div></div>` : ''}</div>`; 
             }
             if (currentTab === 'tsv' || currentTab === 'todos') {
                 if (currentTab === 'tsv' || currentTab === 'todos') {
@@ -1241,8 +1601,24 @@
                 }
                 if (currentTab === 'tsv') { const adeno = medData.find(m => m.id === 24); if (adeno) h += renderMedCardHTML(adeno, w, a); }
                 const s1 = tsvHistory.shock1, s2 = tsvHistory.shock2, shock1Applied = s1.history.length > 0;
-                h += `<div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow space-y-4"><h3 class="text-[10px] font-black text-red-800 uppercase tracking-widest border-b border-red-50 pb-2">⚡ Cardioversão Sincronizada</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bg-slate-50 p-4 rounded-3xl space-y-3"><div class="flex justify-between items-center"><span class="text-[10px] font-black text-slate-900 uppercase">1ª Dose: ${Math.max(1, (w*0.5).toFixed(0))} - ${Math.max(1, (w*1).toFixed(0))} J</span><span class="text-[8px] font-bold text-slate-400">0,5 - 1 J/kg</span></div><div class="flex gap-2"><button onclick="toggleTSVStep('shock1', 'sedated')" class="flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all ${s1.sedated ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">${s1.sedated ? 'Sedação OK' : 'Sedar'}</button><button onclick="toggleTSVStep('shock1', 'synced')" class="flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all ${s1.synced ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">${s1.synced ? 'Sync Ligado' : 'Ligar Sync'}</button></div><button onclick="logShock('tsv', 'shock1')" ${shock1Applied ? 'disabled' : ''} class="w-full py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all ${shock1Applied ? 'bg-slate-200 text-slate-400' : 'bg-red-600 text-white active:scale-95'}">${shock1Applied ? 'CHOQUE APLICADO' : 'Aplicar ' + Math.max(1, (w*0.5).toFixed(0)) + 'J'}</button></div><div class="bg-slate-50 p-4 rounded-3xl space-y-3 ${!shock1Applied ? 'opacity-40 grayscale pointer-events-none' : ''} transition-all"><div class="flex justify-between items-center"><span class="text-[10px] font-black text-slate-900 uppercase">2ª Dose: ${Math.max(2, (w*2).toFixed(0))} J</span><span class="text-[8px] font-bold text-slate-400">2 J/kg</span></div><div class="flex gap-2"><button onclick="toggleTSVStep('shock2', 'sedated')" class="flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all ${s2.sedated ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">${s2.sedated ? 'Sedação OK' : 'Reforçar'}</button><button onclick="toggleTSVStep('shock2', 'synced')" class="flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all ${s2.synced ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">${s2.synced ? 'Sync Ligado' : 'Ligar Sync'}</button></div><button onclick="logShock('tsv', 'shock2')" ${s2.history.length >= 3 ? 'disabled' : ''} class="w-full py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all ${s2.history.length >= 3 ? 'bg-slate-200 text-slate-400' : 'bg-red-900 text-white active:scale-95'}">${s2.history.length >= 3 ? 'Doses ESGOTADAS' : 'Aplicar ' + Math.max(2, (w*2).toFixed(0)) + 'J'}</button></div></div></div>`;
-                if (currentTab === 'tsv') { const amio = medData.find(m => m.id === 25); if (amio) h += renderMedCardHTML(amio, w, a); }
+                h += `<div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow space-y-4"><h3 class="text-[10px] font-black text-red-800 uppercase tracking-widest border-b border-red-50 pb-2">⚡ Cardioversão Sincronizada</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bg-slate-50 p-4 rounded-3xl space-y-3"><div class="flex justify-between items-center"><span class="text-[10px] font-black text-slate-900 uppercase">1ª Dose: ${tsvJoules(w, 1)} J</span><span class="text-[8px] font-bold text-slate-400">1 J/kg (faixa 0,5–1)</span></div><div class="flex gap-2"><button onclick="toggleTSVStep('shock1', 'sedated')" class="flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all ${s1.sedated ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">${s1.sedated ? 'Sedação OK' : 'Sedar'}</button><button onclick="toggleTSVStep('shock1', 'synced')" class="flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all ${s1.synced ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">${s1.synced ? 'Sync Ligado' : 'Ligar Sync'}</button></div><button onclick="logShock('tsv', 'shock1')" ${shock1Applied ? 'disabled' : ''} class="w-full py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all ${shock1Applied ? 'bg-slate-200 text-slate-400' : 'bg-red-600 text-white active:scale-95'}">${shock1Applied ? 'CHOQUE APLICADO' : 'Aplicar ' + tsvJoules(w, 1) + ' J'}</button></div><div class="bg-slate-50 p-4 rounded-3xl space-y-3 ${!shock1Applied ? 'opacity-40 grayscale pointer-events-none' : ''} transition-all"><div class="flex justify-between items-center"><span class="text-[10px] font-black text-slate-900 uppercase">2ª Dose: ${tsvJoules(w, 2)} J</span><span class="text-[8px] font-bold text-slate-400">2 J/kg</span></div><div class="flex gap-2"><button onclick="toggleTSVStep('shock2', 'sedated')" class="flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all ${s2.sedated ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">${s2.sedated ? 'Sedação OK' : 'Reforçar'}</button><button onclick="toggleTSVStep('shock2', 'synced')" class="flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all ${s2.synced ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}">${s2.synced ? 'Sync Ligado' : 'Ligar Sync'}</button></div><button onclick="logShock('tsv', 'shock2')" ${s2.history.length >= 3 ? 'disabled' : ''} class="w-full py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all ${s2.history.length >= 3 ? 'bg-slate-200 text-slate-400' : 'bg-red-900 text-white active:scale-95'}">${s2.history.length >= 3 ? 'Doses ESGOTADAS' : 'Aplicar ' + tsvJoules(w, 2) + ' J'}</button></div></div></div>`;
+                if (currentTab === 'tsv') { const amio = medData.find(m => m.id === 58); if (amio) h += renderMedCardHTML(amio, w, a); }
+            }
+            if (currentTab === 'cad') {
+                const shockH = Math.min(Math.round(50 * w), 1000);
+                const noShockH = Math.min(Math.round(20 * w), 1000);
+                const mais = Math.round(10 * w);
+                h += `<div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow space-y-4"><h3 class="text-[10px] font-black text-blue-800 uppercase tracking-widest border-b border-slate-50 pb-2">Fluxograma da CAD</h3><div class="p-4 bg-blue-50 rounded-3xl"><h4 class="text-[11px] font-black text-blue-700 uppercase mb-2">Confirmar os quatro</h4><p class="text-[10px] font-bold text-slate-600 leading-tight">Glicemia > 200 mg/dL, pH < 7,30, bicarbonato < 15 mEq/L, e cetonemia > 3 mmol/L ou cetonúria > ++. Quadro: desidratação, náusea, vômito, hálito cetônico, dor abdominal, taquipneia.</p></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="p-4 bg-slate-50 rounded-3xl"><h4 class="text-[11px] font-black text-red-700 uppercase mb-2">Com choque</h4><p class="text-[10px] font-bold text-slate-600 leading-tight">NaCl 0,9% <strong>${shockH} ml/h</strong> (50 ml/kg/h, máximo 1.000 ml/h), até a estabilidade.</p></div><div class="p-4 bg-slate-50 rounded-3xl"><h4 class="text-[11px] font-black text-blue-700 uppercase mb-2">Sem choque</h4><p class="text-[10px] font-bold text-slate-600 leading-tight">NaCl 0,9% <strong>${noShockH} ml/h</strong> (20 ml/kg/h, máximo 1.000 ml/h). Manter o volume EV, no geral, por volta de 4 horas do início da fluidoterapia.</p></div></div><p class="text-[10px] font-bold text-slate-500 leading-tight">Se necessitar de mais volume: <strong>${mais} ml/h</strong> (10 ml/kg/h) até a hidratação clínica. Soro ao meio só na expansão, se DX < 200. Dieta assim que aceitar. Soro de manutenção se não aceitar dieta e DX < 200; suspender quando aceitar via oral.</p><div class="p-4 bg-blue-50 rounded-3xl"><h4 class="text-[11px] font-black text-blue-700 uppercase mb-2">Insulina regular EV</h4><p class="text-[10px] font-bold text-slate-600 leading-tight">0,05–0,1 UI/kg/h. Queda alvo 70–90 mg/dL/h. Glicemia de hora em hora. Ajuste de ±0,05 UI/kg/h. Se a queda passar disso, baixar a bomba. Com DX 200–250: reduzir pela metade, junto com dieta ou soro de manutenção.</p></div><p class="text-[10px] font-bold text-slate-500 leading-tight">Reposição com KCl 19,1%: no máximo 25 mEq/L e 0,25 mEq/kg/h. Começar na 2ª hora se K &lt; 6,5 e houver diurese; se K &gt; 6,5, na 2ª hora só NaCl 0,9% até o novo K. Se K < 3,3, não ligar a bomba de insulina (ou pausar) e repor potássio antes.</p></div>`;
+            }
+            if (currentTab === 'convulsao') {
+                h += `<div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow space-y-2"><h3 class="text-[10px] font-black text-blue-800 uppercase tracking-widest border-b border-slate-50 pb-2">Ordem na convulsão</h3><p class="text-[10px] font-bold text-slate-600 leading-tight">1. Checar a glicemia na hora. Se estiver baixa, corrigir antes do anticonvulsivante.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">2. Primeira linha: midazolam. Sem acesso, IM, intranasal ou bucal. Repetir uma vez em 5 min.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">3. Se persistir: fenitoína ou fenobarbital. Não repetir os 20 mg/kg da fenitoína.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">4. Se continuar: midazolam em bomba, com via aérea pronta. A bomba não substitui o ataque.</p></div>`;
+            }
+            if (currentTab === 'anafilaxia') {
+                h += `<div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow space-y-2"><h3 class="text-[10px] font-black text-blue-800 uppercase tracking-widest border-b border-slate-50 pb-2">Ordem na anafilaxia</h3><p class="text-[10px] font-bold text-slate-600 leading-tight">1. Adrenalina IM agora, no vasto lateral. É a primeira droga.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">2. Sem melhora, repetir em 5–15 min. Oxigênio e monitor.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">3. Se hipotensão: SF 10–20 ml/kg. Depois de 3 doses IM sem melhora, passar a adrenalina para a BIC.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">4. Corticoide e difenidramina não substituem a adrenalina.</p></div>`;
+            }
+            if (currentTab === 'choque' && a < 1 && Math.round(a * 12) === 0) {
+                const amp50 = Math.round(50 * w), amp100 = Math.round(100 * w), genta = Math.round(4 * w), cefo = Math.round(50 * w);
+                h += `<div class="bg-white p-5 rounded-[2.5rem] border border-red-100 card-shadow space-y-2"><h3 class="text-[10px] font-black text-red-700 uppercase tracking-widest border-b border-red-50 pb-2">RN — sepse (não usar ceftriaxona)</h3><p class="text-[10px] font-bold text-slate-600 leading-tight">Ceftriaxona desloca bilirrubina e não pode na mesma linha do cálcio. Esquema de termo, Neofax. Prematuro: o intervalo alonga.</p><p class="text-[10px] font-bold text-slate-600 leading-tight"><strong>Sem meningite:</strong> ampicilina <strong>${amp50} mg</strong> (50 mg/kg) EV 8/8 h + gentamicina <strong>${genta} mg</strong> (4 mg/kg) EV 24/24 h se ≥35 semanas. Abaixo disso, gentamicina a cada 36–48 h.</p><p class="text-[10px] font-bold text-slate-600 leading-tight"><strong>Com meningite:</strong> ampicilina <strong>${amp100} mg</strong> (100 mg/kg) EV 8/8 h nos primeiros 7 dias (depois, 75 mg/kg de 6/6 h) + cefotaxima <strong>${cefo} mg</strong> (50 mg/kg) EV, 12/12 h até o 7º dia e 6/6–8/8 h depois. Gentamicina não trata meningite.</p></div>`;
             }
             if (currentTab !== 'tsv') { medData.filter(m => currentTab === 'todos' || (m.tabs && m.tabs.includes(currentTab))).forEach(m => { h += renderMedCardHTML(m, w, a); }); }
             c.innerHTML = h; updateActivityMonitor();
@@ -1319,7 +1695,16 @@
         }, 1000);
 
         function updateHeaderHeight() { const h = document.getElementById('app-header'); if (h) document.documentElement.style.setProperty('--header-height', h.offsetHeight + 'px'); }
-        window.onload = () => { loadFromStorage(); updateHeaderHeight(); initTabs(); setTab('equipamentos'); initSwipeContent(); window.addEventListener('resize', updateHeaderHeight); };
+        function bootApp() {
+            try { loadFromStorage(); } catch (e) { console.error(e); }
+            try { syncEstimateUi(); } catch (e) { console.error(e); }
+            try { updateHeaderHeight(); } catch (e) { console.error(e); }
+            try { initTabs(); } catch (e) { console.error(e); }
+            try { setTab(currentTab || 'equipamentos'); } catch (e) { console.error(e); }
+            try { initSwipeContent(); } catch (e) { console.error(e); }
+            window.addEventListener('resize', updateHeaderHeight);
+        }
+        bootApp();
     </script>
 </body>
 </html>
