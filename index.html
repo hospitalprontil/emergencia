@@ -422,30 +422,32 @@
                 </div>
             </div>
             
-            <div class="flex items-center gap-2">
-                <div class="bg-blue-900/50 p-1.5 rounded-2xl border border-blue-400/20 flex items-center gap-2">
-                    <button onclick="updateAge(-1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">-</button>
-                    <div class="flex flex-col items-center px-1">
-                        <span id="ageUnitLabel" class="text-[8px] uppercase font-bold opacity-60 leading-none mb-1">Anos</span>
-                        <input type="text" inputmode="numeric" id="ageInput" value="3" maxlength="3" class="w-9 text-center bg-transparent text-sm font-black focus:outline-none" oninput="handleAgeInput()" onblur="writePatientInputs()">
+            <div class="flex flex-col gap-1.5 w-full sm:w-auto">
+                <div class="flex items-center gap-2 w-full">
+                    <div class="bg-blue-900/50 p-1.5 rounded-2xl border border-blue-400/20 flex items-center justify-center gap-2 flex-1">
+                        <button onclick="updateAge(-1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">-</button>
+                        <div class="flex flex-col items-center px-1">
+                            <span id="ageUnitLabel" class="text-[8px] uppercase font-bold opacity-60 leading-none mb-1">Anos</span>
+                            <input type="text" inputmode="numeric" id="ageInput" value="3" maxlength="3" class="w-9 text-center bg-transparent text-sm font-black focus:outline-none" oninput="handleAgeInput()" onblur="writePatientInputs()">
+                        </div>
+                        <button onclick="updateAge(1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">+</button>
                     </div>
-                    <button onclick="updateAge(1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">+</button>
+                    <button onclick="openHistory()" class="w-11 h-11 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg border border-white/20 active:scale-90 transition-transform shrink-0">
+                        <span class="text-xl">📋</span>
+                    </button>
                 </div>
-                <div id="weightBox" class="bg-blue-600 p-1.5 rounded-2xl shadow-lg flex items-center gap-2 ring-2 ring-white/20">
+                <label class="w-full bg-blue-900/50 px-3 py-2 rounded-xl border border-blue-400/20 flex items-center justify-center gap-2 cursor-pointer select-none" title="RN: 3,5 kg. De 1 a 11 meses: (0,5 × meses) + 4. De 1 a 5 anos: (2 × idade) + 8. De 6 a 12 anos: (3 × idade) + 7. Desmarque se o peso for conhecido.">
+                    <input type="checkbox" id="estimateWeight" checked onchange="toggleEstimateWeight(this.checked)" class="w-4 h-4 accent-white shrink-0">
+                    <span class="text-[10px] uppercase font-black leading-none">Estimar peso</span>
+                </label>
+                <div id="weightBox" class="bg-blue-600 p-1.5 rounded-2xl shadow-lg flex items-center justify-center gap-2 ring-2 ring-white/20 w-full">
                     <button data-weight-step="-1" onclick="updateWeight(-1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">-</button>
                     <div class="flex flex-col items-center px-1">
                         <span id="weightLabel" class="text-[8px] uppercase font-bold opacity-80 leading-none mb-1">Peso est.</span>
-                        <input type="number" id="weightInput" value="14" class="w-10 text-center bg-transparent text-lg font-black focus:outline-none" oninput="handleWeightInput()">
+                        <input type="number" id="weightInput" value="14" class="w-14 text-center bg-transparent text-lg font-black focus:outline-none" oninput="handleWeightInput()">
                     </div>
                     <button data-weight-step="1" onclick="updateWeight(1)" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-lg font-bold">+</button>
                 </div>
-                <label class="bg-blue-900/50 px-2.5 py-1.5 rounded-2xl border border-blue-400/20 flex items-center gap-1.5 cursor-pointer select-none" title="RN: 3,5 kg. De 1 a 11 meses: (0,5 × meses) + 4. De 1 a 5 anos: (2 × idade) + 8. De 6 a 12 anos: (3 × idade) + 7. Desmarque se o peso for conhecido.">
-                    <input type="checkbox" id="estimateWeight" checked onchange="toggleEstimateWeight(this.checked)" class="w-3.5 h-3.5 accent-white">
-                    <span class="text-[8px] uppercase font-black leading-tight">Estimar<br>peso</span>
-                </label>
-                <button onclick="openHistory()" class="w-11 h-11 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg border border-white/20 active:scale-90 transition-transform">
-                    <span class="text-xl">📋</span>
-                </button>
             </div>
         </div>
     </header>
@@ -485,7 +487,7 @@
     </main>
 
     <footer class="bg-slate-100 text-slate-400 py-6 px-4 text-center border-t border-slate-200 mt-auto no-print">
-        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v3.0 (Clique p/ Versões)</p>
+        <p onclick="openVersionModal()" class="text-[10px] font-black uppercase tracking-tight mb-1 cursor-pointer hover:text-blue-600 transition-colors">2026 - Hospital Prontil • v3.4 (Clique p/ Versões)</p>
         <p class="text-[9px] font-bold uppercase tracking-tighter opacity-70 italic">Apenas para referência. Conferir doses antes da administração.</p>
     </footer>
 
@@ -507,6 +509,36 @@
 
         // --- HISTÓRICO DE VERSÕES (CHANGELOG) ---
         const versionHistory = [
+            {
+                version: "v3.4",
+                date: "01/10/2026",
+                changes: [
+                    "Saiu a letra P do aviso inicial."
+                ]
+            },
+            {
+                version: "v3.3",
+                date: "01/10/2026",
+                changes: [
+                    "No celular, a idade fica numa linha, estimar peso logo abaixo, e o peso na linha de baixo.",
+                    "Sepse do RN dividida em precoce (ampicilina + gentamicina) e tardia (oxacilina + amicacina), com o esquema de meningite em cada uma."
+                ]
+            },
+            {
+                version: "v3.2",
+                date: "01/10/2026",
+                changes: [
+                    "No celular, estimar peso ficou logo abaixo da idade."
+                ]
+            },
+            {
+                version: "v3.1",
+                date: "01/10/2026",
+                changes: [
+                    "No celular, estimar peso ficou logo abaixo do peso, para não espremer o cabeçalho.",
+                    "No aviso inicial, a letra P em tom rosado, bem fraca, abaixo do texto."
+                ]
+            },
             {
                 version: "v3.0",
                 date: "01/10/2026",
@@ -773,7 +805,7 @@
             { id: 5, name: "Noradrenalina (BIC)", indication: "Choque séptico vasoplégico", pres: "1 mg/ml de base", usage: "0,05 - 2 mcg/kg/min", defaultMgKg: 0.1, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Dose sempre em NORADRENALINA BASE.<br>A ampola rotulada hemitartarato 2 mg/ml (8 mg/4 ml) tem <strong>1 mg/ml de base</strong>. Não dobre o volume.<br>Diluir <strong>${(0.3 * w).toFixed(2)} ml</strong> de base + SG 5% qsp 50 ml.<br>1 ml/h = 0,1 mcg/kg/min. Início habitual: <strong>0,5 ml/h</strong> (0,05 mcg/kg/min).` }, obsHighlight: "Rótulo 2 mg/ml de hemitartarato = 1 mg/ml de base.", obs: "Via exclusiva, de preferência central. Preferir adrenalina ou noradrenalina. Dopamina não é primeira linha.", tabs: ["choque", "todos"] },
             { id: 6, name: "Dopamina (BIC)", indication: "Choque", pres: "5 mg/ml", usage: "5 - 20 mcg/kg/min", defaultMgKg: 5, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${((3 * w) / 5).toFixed(2)}ml Dopamina + SF 0,9% qsp 50ml.<br> 1ml/h = 1 mcg/kg/min.` }, obs: "Via exclusiva. Não é primeira linha no choque séptico: preferir adrenalina ou noradrenalina.", tabs: ["choque", "todos"] },
             { id: 7, name: "Dobutamina (BIC)", indication: "Choque cardiogênico", pres: "12,5 mg/ml", usage: "5 - 20 mcg/kg/min", defaultMgKg: 5, editable: false, isMass: true, route: "EV", doseML: (w, a, c, ov) => "BIC", unitML: "ml/h", bic: { formula: (w, ov) => `Diluir ${((3 * w) / 12.5).toFixed(2)}ml Dobuta + SF 0,9% qsp 50ml.<br> 1ml/h = 1 mcg/kg/min.` }, obs: "Via exclusiva.", tabs: ["choque", "todos"] },
-            { id: 10, name: "Ceftriaxona (Rocefin)", indication: "Sepse / Meningite bacteriana", pres: "100 mg/ml (diluído)", usage: "100 mg/kg", defaultMgKg: 100, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 100) * w / 100, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 100) * w, 2000).toFixed(0), unitMass: "mg", obsHighlight: "Sepse sem meningite: 100 mg/kg 1x/dia (teto 2 g). Meningite: ajustar para 50 mg/kg de 12/12 h (teto 2 g/dose, 4 g/dia). RN: NÃO usar. Desloca bilirrubina e não pode com cálcio.", obs: "Infundir em 30 min. O volume é o da solução a 100 mg/ml — diluir antes de correr. Não misturar com cálcio nem na mesma linha do Ringer. No recém-nascido, usar ampicilina + gentamicina, ou ampicilina + cefotaxima se houver meningite.", tabs: ["choque", "todos"] },
+            { id: 10, name: "Ceftriaxona (Rocefin)", indication: "Sepse / Meningite bacteriana", pres: "100 mg/ml (diluído)", usage: "100 mg/kg", defaultMgKg: 100, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IM", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 100) * w / 100, 20).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 100) * w, 2000).toFixed(0), unitMass: "mg", obsHighlight: "Sepse sem meningite: 100 mg/kg 1x/dia (teto 2 g). Meningite: ajustar para 50 mg/kg de 12/12 h (teto 2 g/dose, 4 g/dia). RN: NÃO usar. Desloca bilirrubina e não pode com cálcio.", obs: "Infundir em 30 min. O volume é o da solução a 100 mg/ml — diluir antes de correr. Não misturar com cálcio nem na mesma linha do Ringer. No RN, não usar. Precoce: ampicilina + gentamicina. Tardia: oxacilina + amicacina. Meningite troca o aminoglicosídeo por cefotaxima.", tabs: ["choque", "todos"] },
             { id: 13, name: "Vancomicina", indication: "Sepse (suspeita MRSA)", pres: "Reconstituído 50 mg/ml", usage: "15 mg/kg", defaultMgKg: 15, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV (lento)", doseML: (w, a, c, ov) => Math.min(((ov !== undefined ? ov : 15) * w) / 50, 20).toFixed(1), unitML: "ml (ampola)", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 15) * w, 1000).toFixed(0), unitMass: "mg", obs: "Teto: 1 g. Diluir p/ 5 mg/ml em SF. Correr em >60 min.", tabs: ["choque", "todos"] },
             { id: 17, name: "Hidrocortisona", indication: "Choque séptico refratário", pres: "100 mg ou 500 mg", usage: "2 mg/kg ataque", defaultMgKg: 2, doseUnit: "mg/kg", unitDisplay: "mg/kg", editable: true, isMass: true, route: "EV / IO", doseML: "---", unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 2) * w, 100).toFixed(0), unitMass: "mg", obs: "Teto: 100 mg. Manutenção: 1-2 mg/kg 6/6h.", tabs: ["choque", "todos"] },
             { id: 19, name: "Bicarbonato de Sódio 8,4%", indication: "Exceção: hiperK ou bloqueador de canal de sódio", pres: "1 mEq/ml", usage: "1 mEq/kg", defaultMgKg: 1, doseUnit: "mEq/kg", unitDisplay: "mEq/kg", editable: true, isMass: true, route: "EV / IO (lento)", doseML: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w, 50).toFixed(1), unitML: "ml", doseMass: (w, a, c, ov) => Math.min((ov !== undefined ? ov : 1) * w, 50).toFixed(1), unitMass: "mEq", obsHighlight: "NÃO usar de rotina na PCR.", obs: "Teto 50 mEq. Só hipercalemia ou intoxicação por bloqueador de canal de sódio, com ventilação garantida. Lactente: diluir 8,4% 1:1 e dar o dobro do volume, ou usar 4,2%. Na CAD, só se pH < 6,9 com instabilidade.", tabs: ["pcr", "choque", "todos"] },
@@ -1617,8 +1649,8 @@
                 h += `<div class="bg-white p-5 rounded-[2.5rem] border border-slate-100 card-shadow space-y-2"><h3 class="text-[10px] font-black text-blue-800 uppercase tracking-widest border-b border-slate-50 pb-2">Ordem na anafilaxia</h3><p class="text-[10px] font-bold text-slate-600 leading-tight">1. Adrenalina IM agora, no vasto lateral. É a primeira droga.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">2. Sem melhora, repetir em 5–15 min. Oxigênio e monitor.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">3. Se hipotensão: SF 10–20 ml/kg. Depois de 3 doses IM sem melhora, passar a adrenalina para a BIC.</p><p class="text-[10px] font-bold text-slate-600 leading-tight">4. Corticoide e difenidramina não substituem a adrenalina.</p></div>`;
             }
             if (currentTab === 'choque' && a < 1 && Math.round(a * 12) === 0) {
-                const amp50 = Math.round(50 * w), amp100 = Math.round(100 * w), genta = Math.round(4 * w), cefo = Math.round(50 * w);
-                h += `<div class="bg-white p-5 rounded-[2.5rem] border border-red-100 card-shadow space-y-2"><h3 class="text-[10px] font-black text-red-700 uppercase tracking-widest border-b border-red-50 pb-2">RN — sepse (não usar ceftriaxona)</h3><p class="text-[10px] font-bold text-slate-600 leading-tight">Ceftriaxona desloca bilirrubina e não pode na mesma linha do cálcio. Esquema de termo, Neofax. Prematuro: o intervalo alonga.</p><p class="text-[10px] font-bold text-slate-600 leading-tight"><strong>Sem meningite:</strong> ampicilina <strong>${amp50} mg</strong> (50 mg/kg) EV 8/8 h + gentamicina <strong>${genta} mg</strong> (4 mg/kg) EV 24/24 h se ≥35 semanas. Abaixo disso, gentamicina a cada 36–48 h.</p><p class="text-[10px] font-bold text-slate-600 leading-tight"><strong>Com meningite:</strong> ampicilina <strong>${amp100} mg</strong> (100 mg/kg) EV 8/8 h nos primeiros 7 dias (depois, 75 mg/kg de 6/6 h) + cefotaxima <strong>${cefo} mg</strong> (50 mg/kg) EV, 12/12 h até o 7º dia e 6/6–8/8 h depois. Gentamicina não trata meningite.</p></div>`;
+                const amp50 = Math.round(50 * w), amp100 = Math.round(100 * w), genta = Math.round(4 * w), cefo = Math.round(50 * w), oxa = Math.round(50 * w), ami = Math.round(15 * w), vanco = Math.round(15 * w);
+                h += `<div class="bg-white p-5 rounded-[2.5rem] border border-red-100 card-shadow space-y-3"><h3 class="text-[10px] font-black text-red-700 uppercase tracking-widest border-b border-red-50 pb-2">RN — sepse (não usar ceftriaxona)</h3><p class="text-[10px] font-bold text-slate-600 leading-tight">Ceftriaxona desloca bilirrubina e não pode com cálcio. Doses de termo (≥35 sem), SBP. Prematuro: o intervalo alonga.</p><div class="p-3 bg-slate-50 rounded-2xl space-y-1"><h4 class="text-[11px] font-black text-blue-800 uppercase">Precoce — até 72 h</h4><p class="text-[10px] font-bold text-slate-600 leading-tight">Origem materna.</p><p class="text-[10px] font-bold text-slate-600 leading-tight"><strong>Sem meningite:</strong> ampicilina <strong>${amp50} mg</strong> (50 mg/kg) EV 8/8 h + gentamicina <strong>${genta} mg</strong> (4 mg/kg) EV 24/24 h.</p><p class="text-[10px] font-bold text-slate-600 leading-tight"><strong>Com meningite:</strong> ampicilina <strong>${amp100} mg</strong> (100 mg/kg) EV 8/8 h + cefotaxima <strong>${cefo} mg</strong> (50 mg/kg) EV 12/12 h.</p></div><div class="p-3 bg-slate-50 rounded-2xl space-y-1"><h4 class="text-[11px] font-black text-blue-800 uppercase">Tardia — após 72 h</h4><p class="text-[10px] font-bold text-slate-600 leading-tight">Origem horizontal, em geral da unidade.</p><p class="text-[10px] font-bold text-slate-600 leading-tight"><strong>Sem meningite:</strong> oxacilina <strong>${oxa} mg</strong> (50 mg/kg) EV, 8/8 h até o 7º dia e 6/6 h depois + amicacina <strong>${ami} mg</strong> (15 mg/kg) EV 24/24 h.</p><p class="text-[10px] font-bold text-slate-600 leading-tight"><strong>Com meningite:</strong> cefotaxima <strong>${cefo} mg</strong> (50 mg/kg) EV, 12/12 h até o 7º dia e 8/8 h depois + vancomicina <strong>${vanco} mg</strong> (15 mg/kg) EV, 12/12 h até o 7º dia e 8/8 h depois.</p><p class="text-[10px] font-bold text-slate-500 leading-tight">Cateter ou UTI: vancomicina no lugar da oxacilina.</p></div></div>`;
             }
             if (currentTab !== 'tsv') { medData.filter(m => currentTab === 'todos' || (m.tabs && m.tabs.includes(currentTab))).forEach(m => { h += renderMedCardHTML(m, w, a); }); }
             c.innerHTML = h; updateActivityMonitor();
